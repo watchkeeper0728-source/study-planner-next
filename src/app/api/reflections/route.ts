@@ -5,7 +5,7 @@ import { reflectionSchema } from "@/lib/validators";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get("order") || "desc";
     const subject = searchParams.get("subject");
 
-    const where: any = { userId: session.id };
+    const where: any = { userId: session.user.id };
     if (subject) {
       where.subject = subject;
     }
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const reflection = await prisma.reflection.create({
       data: {
         ...validatedData,
-        userId: session.id,
+        userId: session.user.id,
       },
     });
 
@@ -72,8 +72,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-
-
-
