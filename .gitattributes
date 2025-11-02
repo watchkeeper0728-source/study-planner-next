@@ -1,0 +1,6 @@
+﻿* text=auto
+*.ts text eol=lf charset=utf-8
+*.tsx text eol=lf charset=utf-8
+*.js text eol=lf charset=utf-8
+*.jsx text eol=lf charset=utf-8
+*.json text eol=lf charset=utf-8
