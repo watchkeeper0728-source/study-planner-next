@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reflectionSchema } from "@/lib/validators";
 
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get("order") || "desc";
     const subject = searchParams.get("subject");
 
-    const where: any = { userId: session.user.id };
+    const where: any = { userId: session.id };
     if (subject) {
       where.subject = subject;
     }
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
     const reflection = await prisma.reflection.create({
       data: {
         ...validatedData,
-        userId: session.user.id,
+        userId: session.id,
       },
     });
 

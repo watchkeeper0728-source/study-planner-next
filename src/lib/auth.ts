@@ -1,153 +1,207 @@
-import { NextAuthOptions } from "next-auth";
-import { getServerSession } from "next-auth/next";
-import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "./prisma";
+import { prisma } from './prisma'
+import { cookies } from 'next/headers'
+import { nanoid } from 'nanoid'
 
-// 環境変数の明示的な読み込み
-const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim();
-const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
+// セッション有効期限（30日）
+const SESSION_EXPIRES_DAYS = 30
 
-// 必須環境変数の検証
-if (!googleClientId) {
-  throw new Error("GOOGLE_CLIENT_ID environment variable is not set");
-}
-if (!googleClientSecret) {
-  throw new Error("GOOGLE_CLIENT_SECRET environment variable is not set");
-}
-if (!nextAuthSecret) {
-  throw new Error("NEXTAUTH_SECRET environment variable is not set");
-}
-if (!nextAuthUrl) {
-  throw new Error("NEXTAUTH_URL environment variable is not set");
+export interface SessionUser {
+  id: string
+  username: string
+  name: string | null
 }
 
-// 本番環境ではデバッグログを無効化
-const isDebugMode = process.env.NODE_ENV === 'development' || process.env.ENABLE_AUTH_DEBUG === 'true';
+/**
+ * セッションを取得
+ */
+export async function getSession(): Promise<SessionUser | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get('session_token')?.value
 
-if (isDebugMode) {
-  console.log("[AUTH DEBUG] ========================================");
-  console.log("[AUTH DEBUG] Loading NextAuth configuration...");
-  console.log("[AUTH DEBUG] GOOGLE_CLIENT_ID:", googleClientId.substring(0, 40) + "...");
-  console.log("[AUTH DEBUG] NEXTAUTH_URL:", nextAuthUrl);
-  console.log("[AUTH DEBUG] Expected redirect URI:", `${nextAuthUrl}/api/auth/callback/google`);
-  console.log("[AUTH DEBUG] ========================================");
+    if (!sessionToken) {
+      return null
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    })
+
+    if (!session || session.expires < new Date()) {
+      // セッションが存在しない、または期限切れ
+      if (session) {
+        // 期限切れセッションを削除
+        await prisma.session.delete({ where: { id: session.id } })
+      }
+      return null
+    }
+
+    return {
+      id: session.user.id,
+      username: session.user.username,
+      name: session.user.name,
+    }
+  } catch (error) {
+    console.error('[AUTH] Error getting session:', error)
+    return null
+  }
 }
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-  },
-  providers: [
-    GoogleProvider({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-      authorization: {
-        params: {
-          scope: "openid email profile https://www.googleapis.com/auth/calendar",
-          prompt: "consent",
-          access_type: "offline",
+/**
+ * ユーザー名でログイン
+ */
+export async function signIn(username: string): Promise<{ user: SessionUser; sessionToken: string } | null> {
+  try {
+    // ユーザーを検索または作成
+    let user = await prisma.user.findUnique({
+      where: { username },
+    })
+
+    if (!user) {
+      // 新規ユーザーを作成
+      user = await prisma.user.create({
+        data: {
+          username,
+          name: username,
         },
-      },
-    }),
-  ],
-  callbacks: {
-    async redirect({ url, baseUrl }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] Redirect callback - url:", url, "baseUrl:", baseUrl);
-      }
-      // カスタムリダイレクトURLがある場合はそれを使用
-      if (url.startsWith(baseUrl)) {
-        if (isDebugMode) {
-          console.log("[AUTH DEBUG] Redirecting to custom URL:", url);
-        }
-        return url;
-      }
-      // デフォルトはトップページにリダイレクト
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] Redirecting to baseUrl:", baseUrl);
-      }
-      return baseUrl;
-    },
-    async session({ session, user }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] Session callback - session exists:", !!session, "user exists:", !!user);
-        console.log("[AUTH DEBUG] Session user email:", session?.user?.email);
-        console.log("[AUTH DEBUG] User id:", user?.id);
-      }
-      if (session.user && user) {
-        session.user.id = user.id;
-        if (isDebugMode) {
-          console.log("[AUTH DEBUG] Session user ID set to:", user.id);
-        }
-      } else {
-        if (isDebugMode) {
-          console.error("[AUTH DEBUG] WARNING: Session or user is missing!");
-        }
-      }
-      return session;
-    },
-    async signIn({ account, profile, user }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] ========== SignIn callback triggered ==========");
-        console.log("[AUTH DEBUG] User exists:", !!user);
-        console.log("[AUTH DEBUG] User email:", user?.email || "NO USER");
-        console.log("[AUTH DEBUG] User id:", user?.id || "NO USER ID");
-        console.log("[AUTH DEBUG] Profile email:", profile?.email || "NO PROFILE");
-        console.log("[AUTH DEBUG] Account provider:", account?.provider || "NO ACCOUNT");
-        console.log("[AUTH DEBUG] ==============================================");
-      }
-      // 本番環境ではすべてのユーザーを許可
-      return true;
-    },
-  },
-  session: {
-    strategy: "database",
-  },
-  secret: nextAuthSecret,
-  debug: isDebugMode, // デバッグモードは開発環境のみ
-  events: {
-    async signIn({ user, account, profile }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] ========== Event: signIn ==========");
-        console.log("[AUTH DEBUG] User:", user?.email || "NO USER");
-        console.log("[AUTH DEBUG] Account provider:", account?.provider || "NO ACCOUNT");
-        console.log("[AUTH DEBUG] Profile email:", profile?.email || "NO PROFILE");
-        console.log("[AUTH DEBUG] =====================================");
-      }
-    },
-    async createUser({ user }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] ========== Event: createUser ==========");
-        console.log("[AUTH DEBUG] New user created:", user?.email || "NO USER");
-        console.log("[AUTH DEBUG] User ID:", user?.id || "NO ID");
-        console.log("[AUTH DEBUG] ========================================");
-      }
-    },
-    async linkAccount({ account, user }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] ========== Event: linkAccount ==========");
-        console.log("[AUTH DEBUG] Account linked for user:", user?.email || "NO USER");
-        console.log("[AUTH DEBUG] Account provider:", account?.provider || "NO ACCOUNT");
-        console.log("[AUTH DEBUG] Provider account ID:", account?.providerAccountId || "NO ID");
-        console.log("[AUTH DEBUG] =========================================");
-      }
-    },
-    async createSession({ session, user }) {
-      if (isDebugMode) {
-        console.log("[AUTH DEBUG] ========== Event: createSession ==========");
-        console.log("[AUTH DEBUG] Session created for user:", user?.email || "NO USER");
-        console.log("[AUTH DEBUG] Session token:", session?.sessionToken?.substring(0, 20) + "..." || "NO TOKEN");
-        console.log("[AUTH DEBUG] ===========================================");
-      }
-    },
-  },
-};
+      })
+    } else {
+      // 既存ユーザーの最終ログイン時刻を更新
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      })
+    }
 
-export async function auth() {
-  return await getServerSession(authOptions);
+    // セッショントークンを生成
+    const sessionToken = nanoid(32)
+
+    // セッションを作成
+    const expires = new Date()
+    expires.setDate(expires.getDate() + SESSION_EXPIRES_DAYS)
+
+    await prisma.session.create({
+      data: {
+        sessionToken,
+        userId: user.id,
+        expires,
+      },
+    })
+
+    return {
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+      },
+      sessionToken,
+    }
+  } catch (error) {
+    console.error('[AUTH] Error signing in:', error)
+    return null
+  }
+}
+
+/**
+ * セッショントークンでログイン（直近ログインボタン用）
+ */
+export async function signInWithToken(sessionToken: string): Promise<SessionUser | null> {
+  try {
+    const session = await prisma.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    })
+
+    if (!session || session.expires < new Date()) {
+      return null
+    }
+
+    // 最終ログイン時刻を更新
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { lastLoginAt: new Date() },
+    })
+
+    return {
+      id: session.user.id,
+      username: session.user.username,
+      name: session.user.name,
+    }
+  } catch (error) {
+    console.error('[AUTH] Error signing in with token:', error)
+    return null
+  }
+}
+
+/**
+ * ログアウト
+ */
+export async function signOut(sessionToken?: string): Promise<void> {
+  try {
+    if (sessionToken) {
+      await prisma.session.delete({
+        where: { sessionToken },
+      })
+    }
+  } catch (error) {
+    console.error('[AUTH] Error signing out:', error)
+  }
+}
+
+/**
+ * 直近ログインしたユーザーを取得（最大3名）
+ */
+export async function getRecentUsers(limit: number = 3): Promise<{ username: string; name: string | null; lastLoginAt: Date | null }[]> {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        lastLoginAt: { not: null },
+      },
+      orderBy: {
+        lastLoginAt: 'desc',
+      },
+      take: limit,
+      select: {
+        username: true,
+        name: true,
+        lastLoginAt: true,
+      },
+    })
+
+    return users.map((u) => ({
+      username: u.username,
+      name: u.name,
+      lastLoginAt: u.lastLoginAt,
+    }))
+  } catch (error) {
+    console.error('[AUTH] Error getting recent users:', error)
+    return []
+  }
+}
+
+/**
+ * ユーザー名の有効性をチェック
+ */
+export function validateUsername(username: string): { valid: boolean; error?: string } {
+  if (!username || username.trim().length === 0) {
+    return { valid: false, error: 'ユーザー名を入力してください' }
+  }
+
+  const trimmed = username.trim()
+
+  if (trimmed.length < 2) {
+    return { valid: false, error: 'ユーザー名は2文字以上である必要があります' }
+  }
+
+  if (trimmed.length > 20) {
+    return { valid: false, error: 'ユーザー名は20文字以下である必要があります' }
+  }
+
+  // 英数字とアンダースコア、ハイフンのみ許可
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return { valid: false, error: 'ユーザー名は英数字、アンダースコア(_)、ハイフン(-)のみ使用できます' }
+  }
+
+  return { valid: true }
 }

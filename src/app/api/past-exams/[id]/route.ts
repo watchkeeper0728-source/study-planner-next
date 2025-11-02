@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { pastExamSchema } from "@/lib/validators";
 
@@ -27,7 +26,7 @@ export async function PATCH(
       return NextResponse.json({ error: "PastExamが見つかりません" }, { status: 404 });
     }
 
-    if (pastExam.userId !== session.user.id) {
+    if (pastExam.userId !== session.id) {
       return NextResponse.json({ error: "権限がありません" }, { status: 403 });
     }
 
@@ -73,7 +72,7 @@ export async function DELETE(
       return NextResponse.json({ error: "PastExamが見つかりません" }, { status: 404 });
     }
 
-    if (pastExam.userId !== session.user.id) {
+    if (pastExam.userId !== session.id) {
       return NextResponse.json({ error: "権限がありません" }, { status: 403 });
     }
 
