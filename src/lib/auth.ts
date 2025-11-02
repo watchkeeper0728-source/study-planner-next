@@ -23,7 +23,15 @@ export async function getSession(): Promise<SessionUser | null> {
 
     const session = await prisma.session.findUnique({
       where: { sessionToken },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+          },
+        },
+      },
     })
 
     if (!session || session.expires < new Date()) {
@@ -35,7 +43,7 @@ export async function getSession(): Promise<SessionUser | null> {
       return null
     }
 
-    // Type assertion: Prisma Client may have old type definitions
+    // Type assertion: Prisma Client may have old type definitions during migration
     // @ts-ignore - Bypass type checking for username property
     const user: any = session.user
     const username = user.username || user.id
@@ -111,22 +119,31 @@ export async function signInWithToken(sessionToken: string): Promise<SessionUser
   try {
     const session = await prisma.session.findUnique({
       where: { sessionToken },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+          },
+        },
+      },
     })
 
     if (!session || session.expires < new Date()) {
       return null
     }
 
+    // Type assertion: Prisma Client may have old type definitions during migration
+    // @ts-ignore - Bypass type checking for username property
+    const user: any = session.user
+
     // 譛邨ゅΟ繧ｰ繧､繝ｳ譎ょ綾繧呈峩譁ｰ
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: { lastLoginAt: new Date() },
     })
 
-    // Type assertion: Prisma Client may have old type definitions
-    // @ts-ignore - Bypass type checking for username property
-    const user: any = session.user
     const username = user.username || user.id
 
     return {
@@ -209,4 +226,3 @@ export function validateUsername(username: string): { valid: boolean; error?: st
 
   return { valid: true }
 }
-
