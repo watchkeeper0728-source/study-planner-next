@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
@@ -26,7 +26,7 @@ export async function PATCH(
       return NextResponse.json({ error: "PastExamが見つかりません" }, { status: 404 });
     }
 
-    if (pastExam.userId !== session.id) {
+    if (pastExam.userId !== session.user.id) {
       return NextResponse.json({ error: "権限がありません" }, { status: 403 });
     }
 
@@ -57,7 +57,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
@@ -72,7 +72,7 @@ export async function DELETE(
       return NextResponse.json({ error: "PastExamが見つかりません" }, { status: 404 });
     }
 
-    if (pastExam.userId !== session.id) {
+    if (pastExam.userId !== session.user.id) {
       return NextResponse.json({ error: "権限がありません" }, { status: 403 });
     }
 
@@ -89,4 +89,3 @@ export async function DELETE(
     );
   }
 }
-
