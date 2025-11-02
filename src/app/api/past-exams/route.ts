@@ -7,12 +7,12 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     
-    if (!session?.user?.id) {
+    if (!session?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
     const pastExams = await prisma.pastExam.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.id },
       orderBy: [
         { schoolName: "asc" },
         { year: "desc" },
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     
-    if (!session?.user?.id) {
+    if (!session?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const pastExam = await prisma.pastExam.create({
       data: {
         ...validatedData,
-        userId: session.user.id,
+        userId: session.id,
       },
     });
 
