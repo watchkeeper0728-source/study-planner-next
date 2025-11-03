@@ -12,6 +12,7 @@ interface RecentUser {
   username: string
   name: string | null
   lastLoginAt: string | null
+  sessionToken: string | null
 }
 
 export default function SignInPage() {
@@ -61,26 +62,33 @@ export default function SignInPage() {
     }
   }
 
-  const handleQuickSignIn = async (username: string) => {
+  const handleQuickSignIn = async (user: RecentUser) => {
     setIsLoading(true)
 
     try {
-      // まずセッションを確認
-      const sessionRes = await fetch('/api/auth/session')
-      const sessionData = await sessionRes.json()
+      // セッショントークンがある場合はそれを使用してログイン
+      if (user.sessionToken) {
+        const response = await fetch('/api/auth/signin-with-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionToken: user.sessionToken }),
+        })
 
-      // セッションが有効な場合はそのトークンを使用
-      if (sessionData.user && sessionData.user.username === username) {
-        router.push('/')
-        router.refresh()
-        return
+        const data = await response.json()
+
+        if (response.ok && data.user) {
+          toast.success(`ようこそ、${data.user.username}さん！`)
+          router.push('/')
+          router.refresh()
+          return
+        }
       }
 
-      // 新しくログイン
+      // セッショントークンがない、または無効な場合は通常ログイン
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username: user.username }),
       })
 
       const data = await response.json()
@@ -119,7 +127,7 @@ export default function SignInPage() {
                   <Button
                     key={user.username}
                     variant="outline"
-                    onClick={() => handleQuickSignIn(user.username)}
+                    onClick={() => handleQuickSignIn(user)}
                     disabled={isLoading}
                     className="w-full justify-start"
                   >
