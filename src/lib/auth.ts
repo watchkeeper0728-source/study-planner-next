@@ -138,8 +138,8 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
     console.log('[AUTH] Session expires at:', expires)
 
     await prisma.$executeRaw`
-      INSERT INTO sessions (id, "sessionToken", "userId", expires, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid()::text, ${sessionToken}, ${user.id}, ${expires}, NOW(), NOW())
+      INSERT INTO sessions (id, "sessionToken", "userId", expires)
+      VALUES (gen_random_uuid()::text, ${sessionToken}, ${user.id}, ${expires})
     `
     console.log('[AUTH] Session created successfully')
 
