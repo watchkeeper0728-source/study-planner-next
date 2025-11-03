@@ -9,17 +9,16 @@ export async function GET(request: NextRequest) {
     const migrateParam = searchParams.get('migrate')
     const runMigrationParam = searchParams.get('run-migration')
     
+    // Set up expected token
+    const envToken = process.env.MIGRATION_SECRET_TOKEN
+    const expectedToken = envToken || 'temp-migration-token-change-in-production'
+    
     // Check if migration should be triggered
     const shouldMigrate = 
       migrateParam === 'true' || 
       migrateParam === '1' ||
       migrateParam === expectedToken ||
-      runMigrationParam === expectedToken ||
-      migrateParam === (process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production') ||
-      runMigrationParam === (process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production')
-    
-    const envToken = process.env.MIGRATION_SECRET_TOKEN
-    const expectedToken = envToken || 'temp-migration-token-change-in-production'
+      runMigrationParam === expectedToken
     
     console.log('[MIGRATION DEBUG] migrateParam:', migrateParam)
     console.log('[MIGRATION DEBUG] runMigrationParam:', runMigrationParam)
