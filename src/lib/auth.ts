@@ -212,14 +212,43 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
 export async function signInWithToken(sessionToken: string): Promise<SessionUser | null> {
   try {
     // Use raw SQL to get session and user data
-    const sessions: any[] = await prisma.$queryRaw`
-      SELECT s.id, s."sessionToken", s."userId", s.expires,
-             u.id as "userId", u.username, u.name
-      FROM sessions s
-      INNER JOIN users u ON s."userId" = u.id
-      WHERE s."sessionToken" = ${sessionToken}
-      LIMIT 1
-    `
+    // Handle case where username column might not exist yet
+    let sessions: any[]
+    try {
+      // Check if username column exists
+      const columnCheck: any[] = await prisma.$queryRaw`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'username'
+        LIMIT 1
+      `
+      
+      if (columnCheck.length > 0) {
+        // Username column exists, use it
+        sessions = await prisma.$queryRaw`
+          SELECT s.id, s."sessionToken", s."userId", s.expires,
+                 u.id as "userId", u.username, u.name
+          FROM sessions s
+          INNER JOIN users u ON s."userId" = u.id
+          WHERE s."sessionToken" = ${sessionToken}
+          LIMIT 1
+        `
+      } else {
+        // Username column doesn't exist yet, use id as fallback
+        sessions = await prisma.$queryRaw`
+          SELECT s.id, s."sessionToken", s."userId", s.expires,
+                 u.id as "userId", u.id as username, u.name
+          FROM sessions s
+          INNER JOIN users u ON s."userId" = u.id
+          WHERE s."sessionToken" = ${sessionToken}
+          LIMIT 1
+        `
+      }
+    } catch (error) {
+      console.error('[AUTH] Error querying session with token:', error)
+      return null
+    }
 
     if (sessions.length === 0) {
       return null
@@ -237,12 +266,27 @@ export async function signInWithToken(sessionToken: string): Promise<SessionUser
       name: sessionData.name,
     }
 
-    // Update last login time using raw SQL
-    await prisma.$executeRaw`
-      UPDATE users
-      SET "lastLoginAt" = NOW()
-      WHERE id = ${user.id}
-    `
+    // Update last login time using raw SQL (only if column exists)
+    try {
+      const lastLoginColumnCheck: any[] = await prisma.$queryRaw`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'lastLoginAt'
+        LIMIT 1
+      `
+      
+      if (lastLoginColumnCheck.length > 0) {
+        await prisma.$executeRaw`
+          UPDATE users
+          SET "lastLoginAt" = NOW()
+          WHERE id = ${user.id}
+        `
+      }
+    } catch (error) {
+      // Ignore error if column doesn't exist
+      console.warn('[AUTH] Could not update lastLoginAt:', error)
+    }
 
     const username = user.username || user.id
 
