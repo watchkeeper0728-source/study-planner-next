@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
     const token = request.nextUrl.searchParams.get('migrate')
     const expectedToken = process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production'
     
+    console.log('[MIGRATION DEBUG] Token from query:', token)
+    console.log('[MIGRATION DEBUG] Expected token:', expectedToken)
+    console.log('[MIGRATION DEBUG] Tokens match:', token === expectedToken)
+    
     if (token === expectedToken) {
       // Run migration
       try {
