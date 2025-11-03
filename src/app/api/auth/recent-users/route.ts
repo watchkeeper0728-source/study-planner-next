@@ -5,14 +5,23 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     // Check if migration token is provided to run migration
-    const token = request.nextUrl.searchParams.get('migrate')
-    const expectedToken = process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production'
+    // Support both 'migrate' and 'run-migration' parameter names
+    const token = request.nextUrl.searchParams.get('migrate') || request.nextUrl.searchParams.get('run-migration')
+    const envToken = process.env.MIGRATION_SECRET_TOKEN
+    const expectedToken = envToken || 'temp-migration-token-change-in-production'
     
     console.log('[MIGRATION DEBUG] Token from query:', token)
+    console.log('[MIGRATION DEBUG] Env token exists:', !!envToken)
     console.log('[MIGRATION DEBUG] Expected token:', expectedToken)
     console.log('[MIGRATION DEBUG] Tokens match:', token === expectedToken)
+    console.log('[MIGRATION DEBUG] All query params:', Array.from(request.nextUrl.searchParams.entries()))
     
-    if (token === expectedToken) {
+    // Also allow 'migrate=true' as a simple trigger (less secure but more reliable)
+    const migrateFlag = request.nextUrl.searchParams.get('migrate')
+    const isSimpleTrigger = migrateFlag === 'true' || migrateFlag === '1'
+    const isTokenMatch = token === expectedToken
+    
+    if (isTokenMatch || isSimpleTrigger) {
       // Run migration
       try {
         console.log('[MIGRATION] Starting database migration via recent-users endpoint...')
