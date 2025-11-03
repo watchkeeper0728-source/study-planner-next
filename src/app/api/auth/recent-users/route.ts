@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     // Get all query parameters for debugging
-    const searchParams = request.nextUrl.searchParams
+    // Use new URL() method as used in other API routes
+    const { searchParams } = new URL(request.url)
     const migrateParam = searchParams.get('migrate')
     const runMigrationParam = searchParams.get('run-migration')
     
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
       migrateParam === expectedToken ||
       runMigrationParam === expectedToken
     
+    console.log('[MIGRATION DEBUG] Full URL:', request.url)
     console.log('[MIGRATION DEBUG] migrateParam:', migrateParam)
     console.log('[MIGRATION DEBUG] runMigrationParam:', runMigrationParam)
     console.log('[MIGRATION DEBUG] shouldMigrate:', shouldMigrate)
