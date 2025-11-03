@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { cookies } from 'next/headers'
 import { nanoid } from 'nanoid'
+import { randomBytes } from 'crypto'
 
 // Session expiration (30 days)
 const SESSION_EXPIRES_DAYS = 30
@@ -23,31 +24,37 @@ export async function getSession(): Promise<SessionUser | null> {
       return null
     }
 
-    const session = await prisma.session.findUnique({
-      where: { sessionToken },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-          },
-        },
-      },
-    })
+    // Use raw SQL to get session and user data
+    const sessions: any[] = await prisma.$queryRaw`
+      SELECT s.id, s."sessionToken", s."userId", s.expires,
+             u.id as "userId", u.username, u.name
+      FROM sessions s
+      INNER JOIN users u ON s."userId" = u.id
+      WHERE s."sessionToken" = ${sessionToken}
+      LIMIT 1
+    `
 
-    if (!session || session.expires < new Date()) {
-      // Session does not exist or expired
-      if (session) {
-        // Delete expired session
-        await prisma.session.delete({ where: { id: session.id } })
+    if (sessions.length === 0) {
+      return null
+    }
+
+    const sessionData = sessions[0]
+
+    if (!sessionData || new Date(sessionData.expires) < new Date()) {
+      // Session expired, delete it
+      if (sessionData) {
+        await prisma.$executeRaw`
+          DELETE FROM sessions WHERE id = ${sessionData.id}
+        `
       }
       return null
     }
 
-    // Type assertion: Prisma Client may have old type definitions during migration
-    // @ts-ignore - Bypass type checking for username property
-    const user: any = session.user
+    const user = {
+      id: sessionData.userId,
+      username: sessionData.username,
+      name: sessionData.name,
+    }
     const username = user.username || user.id
 
     return {
@@ -92,7 +99,6 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
     if (!user) {
       console.log('[AUTH] Creating new user using raw SQL')
       // Generate a new ID using cuid format (similar to Prisma's default)
-      const { randomBytes } = await import('crypto')
       const idBytes = randomBytes(16)
       const newId = 'c' + idBytes.toString('base64url').substring(0, 24).replace(/[+\/=]/g, '')
       
@@ -126,26 +132,30 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
     const sessionToken = nanoid(32)
     console.log('[AUTH] Generated session token')
 
-    // Create session
+    // Create session using raw SQL
     const expires = new Date()
     expires.setDate(expires.getDate() + SESSION_EXPIRES_DAYS)
+    console.log('[AUTH] Session expires at:', expires)
 
-    await prisma.session.create({
-      data: {
-        sessionToken,
-        userId: user.id,
-        expires,
-      },
-    })
+    await prisma.$executeRaw`
+      INSERT INTO sessions (id, "sessionToken", "userId", expires, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid()::text, ${sessionToken}, ${user.id}, ${expires}, NOW(), NOW())
+    `
+    console.log('[AUTH] Session created successfully')
 
-    return {
+    const userUsername = user.username || user.id
+
+    const result = {
       user: {
         id: user.id,
-        username: user.username,
+        username: userUsername,
         name: user.name,
       },
       sessionToken,
     }
+    
+    console.log('[AUTH] Sign in successful, returning result')
+    return result
   } catch (error) {
     console.error('[AUTH] Error signing in:', error)
     return null
@@ -157,32 +167,38 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
  */
 export async function signInWithToken(sessionToken: string): Promise<SessionUser | null> {
   try {
-    const session = await prisma.session.findUnique({
-      where: { sessionToken },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-          },
-        },
-      },
-    })
+    // Use raw SQL to get session and user data
+    const sessions: any[] = await prisma.$queryRaw`
+      SELECT s.id, s."sessionToken", s."userId", s.expires,
+             u.id as "userId", u.username, u.name
+      FROM sessions s
+      INNER JOIN users u ON s."userId" = u.id
+      WHERE s."sessionToken" = ${sessionToken}
+      LIMIT 1
+    `
 
-    if (!session || session.expires < new Date()) {
+    if (sessions.length === 0) {
       return null
     }
 
-    // Type assertion: Prisma Client may have old type definitions during migration
-    // @ts-ignore - Bypass type checking for username property
-    const user: any = session.user
+    const sessionData = sessions[0]
 
-    // Update last login time
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    })
+    if (!sessionData || new Date(sessionData.expires) < new Date()) {
+      return null
+    }
+
+    const user = {
+      id: sessionData.userId,
+      username: sessionData.username,
+      name: sessionData.name,
+    }
+
+    // Update last login time using raw SQL
+    await prisma.$executeRaw`
+      UPDATE users
+      SET "lastLoginAt" = NOW()
+      WHERE id = ${user.id}
+    `
 
     const username = user.username || user.id
 
@@ -203,9 +219,9 @@ export async function signInWithToken(sessionToken: string): Promise<SessionUser
 export async function signOut(sessionToken?: string): Promise<void> {
   try {
     if (sessionToken) {
-      await prisma.session.delete({
-        where: { sessionToken },
-      })
+      await prisma.$executeRaw`
+        DELETE FROM sessions WHERE "sessionToken" = ${sessionToken}
+      `
     }
   } catch (error) {
     console.error('[AUTH] Error signing out:', error)
@@ -217,28 +233,30 @@ export async function signOut(sessionToken?: string): Promise<void> {
  */
 export async function getRecentUsers(limit: number = 3): Promise<{ username: string; name: string | null; lastLoginAt: Date | null }[]> {
   try {
-    const users = await prisma.user.findMany({
-      where: {
-        lastLoginAt: { not: null },
-      },
-      orderBy: {
-        lastLoginAt: 'desc',
-      },
-      take: limit,
-      select: {
-        username: true,
-        name: true,
-        lastLoginAt: true,
-      },
-    })
-
-    return users.map((u) => ({
-      username: u.username,
-      name: u.name,
-      lastLoginAt: u.lastLoginAt,
-    }))
+    // Use raw SQL query as workaround until Prisma Client is regenerated
+    try {
+      const users: any[] = await prisma.$queryRaw`
+        SELECT id, username, name, "lastLoginAt"
+        FROM users
+        WHERE "lastLoginAt" IS NOT NULL
+        ORDER BY "lastLoginAt" DESC
+        LIMIT ${limit}
+      `
+      
+      return users.map((u: any) => ({
+        username: u.username || u.id,
+        name: u.name,
+        lastLoginAt: u.lastLoginAt,
+      }))
+    } catch (rawError) {
+      console.error('[AUTH] Raw query error, returning empty array:', rawError)
+      return []
+    }
   } catch (error) {
     console.error('[AUTH] Error getting recent users:', error)
+    if (error instanceof Error) {
+      console.error('[AUTH] Error details:', error.message)
+    }
     return []
   }
 }
