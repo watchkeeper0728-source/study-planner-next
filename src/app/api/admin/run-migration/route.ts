@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Also support GET method for easier browser access
+export async function GET(request: NextRequest) {
+  return handleMigration(request)
+}
+
 /**
  * Temporary endpoint to run database migration
  * This should be deleted after migration is complete
  * SECURITY: In production, this should be protected with authentication
  */
 export async function POST(request: NextRequest) {
+  return handleMigration(request)
+}
+
+async function handleMigration(request: NextRequest) {
   try {
     // Simple security check - use a secret token from environment variable
+    // Also allow GET method for easier browser access
     const authHeader = request.headers.get('authorization')
+    const authQuery = request.nextUrl.searchParams.get('token')
     const expectedToken = process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production'
     
-    if (authHeader !== `Bearer ${expectedToken}`) {
+    const providedToken = authHeader?.replace('Bearer ', '') || authQuery
+    
+    if (providedToken !== expectedToken) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized. Please provide token in query parameter: ?token=temp-migration-token-change-in-production' },
         { status: 401 }
       )
     }
