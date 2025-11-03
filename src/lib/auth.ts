@@ -66,29 +66,65 @@ export async function getSession(): Promise<SessionUser | null> {
  */
 export async function signIn(username: string): Promise<{ user: SessionUser; sessionToken: string } | null> {
   try {
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { username },
-    })
+    console.log('[AUTH] Starting sign in for username:', username)
+    
+    // Check database connection
+    try {
+      await prisma.$connect()
+      console.log('[AUTH] Database connected')
+    } catch (dbError) {
+      console.error('[AUTH] Database connection error:', dbError)
+      throw new Error('データベースに接続できませんでした')
+    }
+
+    // Use raw SQL query as workaround until Prisma Client is regenerated
+    console.log('[AUTH] Looking up user by username using raw SQL')
+    const existingUsers: any[] = await prisma.$queryRaw`
+      SELECT id, username, name
+      FROM users
+      WHERE username = ${username}
+      LIMIT 1
+    `
+
+    let user: any = existingUsers[0]
+    console.log('[AUTH] User lookup result:', user ? 'found' : 'not found')
 
     if (!user) {
-      // Create new user
-      user = await prisma.user.create({
-        data: {
-          username,
-          name: username,
-        },
-      })
+      console.log('[AUTH] Creating new user using raw SQL')
+      // Generate a new ID using cuid format (similar to Prisma's default)
+      const { randomBytes } = await import('crypto')
+      const idBytes = randomBytes(16)
+      const newId = 'c' + idBytes.toString('base64url').substring(0, 24).replace(/[+\/=]/g, '')
+      
+      // Create new user using raw SQL
+      await prisma.$executeRaw`
+        INSERT INTO users (id, username, name, tz, "createdAt", "updatedAt")
+        VALUES (${newId}, ${username}, ${username}, 'Asia/Tokyo', NOW(), NOW())
+      `
+      
+      // Fetch the created user
+      const newUsers: any[] = await prisma.$queryRaw`
+        SELECT id, username, name
+        FROM users
+        WHERE username = ${username}
+        LIMIT 1
+      `
+      user = newUsers[0]
+      console.log('[AUTH] New user created:', user.id)
     } else {
-      // Update last login time for existing user
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      })
+      console.log('[AUTH] Updating last login time for existing user')
+      // Update last login time using raw SQL
+      await prisma.$executeRaw`
+        UPDATE users
+        SET "lastLoginAt" = NOW()
+        WHERE id = ${user.id}
+      `
+      console.log('[AUTH] Last login time updated')
     }
 
     // Generate session token
     const sessionToken = nanoid(32)
+    console.log('[AUTH] Generated session token')
 
     // Create session
     const expires = new Date()
