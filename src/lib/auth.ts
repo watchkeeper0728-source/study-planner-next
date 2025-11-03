@@ -229,17 +229,30 @@ export async function signOut(sessionToken?: string): Promise<void> {
 }
 
 /**
- * Get recently logged in users (max 3)
+ * Get recently logged in users (max 3) with their active session tokens
  */
-export async function getRecentUsers(limit: number = 3): Promise<{ username: string; name: string | null; lastLoginAt: Date | null }[]> {
+export async function getRecentUsers(limit: number = 3): Promise<{ username: string; name: string | null; lastLoginAt: Date | null; sessionToken: string | null }[]> {
   try {
-    // Use raw SQL query as workaround until Prisma Client is regenerated
+    // Use raw SQL query to get recent users with their active sessions
     try {
       const users: any[] = await prisma.$queryRaw`
-        SELECT id, username, name, "lastLoginAt"
-        FROM users
-        WHERE "lastLoginAt" IS NOT NULL
-        ORDER BY "lastLoginAt" DESC
+        SELECT 
+          u.id,
+          u.username,
+          u.name,
+          u."lastLoginAt",
+          s."sessionToken"
+        FROM users u
+        LEFT JOIN LATERAL (
+          SELECT "sessionToken"
+          FROM sessions
+          WHERE "userId" = u.id
+            AND expires > NOW()
+          ORDER BY expires DESC
+          LIMIT 1
+        ) s ON true
+        WHERE u."lastLoginAt" IS NOT NULL
+        ORDER BY u."lastLoginAt" DESC
         LIMIT ${limit}
       `
       
@@ -247,6 +260,7 @@ export async function getRecentUsers(limit: number = 3): Promise<{ username: str
         username: u.username || u.id,
         name: u.name,
         lastLoginAt: u.lastLoginAt,
+        sessionToken: u.sessionToken || null,
       }))
     } catch (rawError) {
       console.error('[AUTH] Raw query error, returning empty array:', rawError)
