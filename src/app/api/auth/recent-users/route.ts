@@ -4,11 +4,26 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all query parameters for debugging
-    // Use new URL() method as used in other API routes
-    const { searchParams } = new URL(request.url)
-    const migrateParam = searchParams.get('migrate')
-    const runMigrationParam = searchParams.get('run-migration')
+    // Try multiple methods to get query parameters
+    // Method 1: Use nextUrl.searchParams (original method)
+    const nextUrlParams = request.nextUrl.searchParams
+    const migrateFromNextUrl = nextUrlParams.get('migrate')
+    const runMigrationFromNextUrl = nextUrlParams.get('run-migration')
+    
+    // Method 2: Use new URL() method
+    let migrateFromUrl: string | null = null
+    let runMigrationFromUrl: string | null = null
+    try {
+      const { searchParams } = new URL(request.url)
+      migrateFromUrl = searchParams.get('migrate')
+      runMigrationFromUrl = searchParams.get('run-migration')
+    } catch (e) {
+      console.warn('[MIGRATION DEBUG] Failed to parse URL:', e)
+    }
+    
+    // Use whichever method worked
+    const migrateParam = migrateFromNextUrl || migrateFromUrl
+    const runMigrationParam = runMigrationFromNextUrl || runMigrationFromUrl
     
     // Set up expected token
     const envToken = process.env.MIGRATION_SECRET_TOKEN
@@ -22,12 +37,16 @@ export async function GET(request: NextRequest) {
       runMigrationParam === expectedToken
     
     console.log('[MIGRATION DEBUG] Full URL:', request.url)
-    console.log('[MIGRATION DEBUG] migrateParam:', migrateParam)
-    console.log('[MIGRATION DEBUG] runMigrationParam:', runMigrationParam)
+    console.log('[MIGRATION DEBUG] Next URL:', request.nextUrl.toString())
+    console.log('[MIGRATION DEBUG] Next URL search:', request.nextUrl.search)
+    console.log('[MIGRATION DEBUG] migrateFromNextUrl:', migrateFromNextUrl)
+    console.log('[MIGRATION DEBUG] migrateFromUrl:', migrateFromUrl)
+    console.log('[MIGRATION DEBUG] migrateParam (final):', migrateParam)
+    console.log('[MIGRATION DEBUG] runMigrationParam (final):', runMigrationParam)
     console.log('[MIGRATION DEBUG] shouldMigrate:', shouldMigrate)
     console.log('[MIGRATION DEBUG] Env token exists:', !!envToken)
     console.log('[MIGRATION DEBUG] Expected token:', expectedToken)
-    console.log('[MIGRATION DEBUG] All query params:', Object.fromEntries(searchParams.entries()))
+    console.log('[MIGRATION DEBUG] NextUrl query params:', Object.fromEntries(nextUrlParams.entries()))
     
     if (shouldMigrate) {
       // Run migration
