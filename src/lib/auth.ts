@@ -86,6 +86,21 @@ export async function signIn(username: string): Promise<{ user: SessionUser; ses
 
     // Use raw SQL query as workaround until Prisma Client is regenerated
     console.log('[AUTH] Looking up user by username using raw SQL')
+    
+    // First check if username column exists
+    const columnCheck: any[] = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      AND column_name = 'username'
+      LIMIT 1
+    `
+    
+    if (columnCheck.length === 0) {
+      console.error('[AUTH] username column does not exist in database. Migration needs to be applied.')
+      throw new Error('データベースのマイグレーションが適用されていません。管理者に連絡してください。')
+    }
+    
     const existingUsers: any[] = await prisma.$queryRaw`
       SELECT id, username, name
       FROM users
@@ -234,7 +249,23 @@ export async function signOut(sessionToken?: string): Promise<void> {
 export async function getRecentUsers(limit: number = 3): Promise<{ username: string; name: string | null; lastLoginAt: Date | null; sessionToken: string | null }[]> {
   try {
     // Use raw SQL query to get recent users with their active sessions
+    // Handle case where username column might not exist yet
     try {
+      // First check if username column exists
+      const columnCheck: any[] = await prisma.$queryRaw`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'username'
+        LIMIT 1
+      `
+      
+      if (columnCheck.length === 0) {
+        // Username column doesn't exist yet, return empty array
+        console.warn('[AUTH] username column does not exist in database yet')
+        return []
+      }
+
       const users: any[] = await prisma.$queryRaw`
         SELECT 
           u.id,
