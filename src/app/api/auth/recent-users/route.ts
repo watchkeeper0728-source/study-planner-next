@@ -4,24 +4,31 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if migration token is provided to run migration
-    // Support both 'migrate' and 'run-migration' parameter names
-    const token = request.nextUrl.searchParams.get('migrate') || request.nextUrl.searchParams.get('run-migration')
+    // Get all query parameters for debugging
+    const searchParams = request.nextUrl.searchParams
+    const migrateParam = searchParams.get('migrate')
+    const runMigrationParam = searchParams.get('run-migration')
+    
+    // Check if migration should be triggered
+    const shouldMigrate = 
+      migrateParam === 'true' || 
+      migrateParam === '1' ||
+      migrateParam === expectedToken ||
+      runMigrationParam === expectedToken ||
+      migrateParam === (process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production') ||
+      runMigrationParam === (process.env.MIGRATION_SECRET_TOKEN || 'temp-migration-token-change-in-production')
+    
     const envToken = process.env.MIGRATION_SECRET_TOKEN
     const expectedToken = envToken || 'temp-migration-token-change-in-production'
     
-    console.log('[MIGRATION DEBUG] Token from query:', token)
+    console.log('[MIGRATION DEBUG] migrateParam:', migrateParam)
+    console.log('[MIGRATION DEBUG] runMigrationParam:', runMigrationParam)
+    console.log('[MIGRATION DEBUG] shouldMigrate:', shouldMigrate)
     console.log('[MIGRATION DEBUG] Env token exists:', !!envToken)
     console.log('[MIGRATION DEBUG] Expected token:', expectedToken)
-    console.log('[MIGRATION DEBUG] Tokens match:', token === expectedToken)
-    console.log('[MIGRATION DEBUG] All query params:', Array.from(request.nextUrl.searchParams.entries()))
+    console.log('[MIGRATION DEBUG] All query params:', Object.fromEntries(searchParams.entries()))
     
-    // Also allow 'migrate=true' as a simple trigger (less secure but more reliable)
-    const migrateFlag = request.nextUrl.searchParams.get('migrate')
-    const isSimpleTrigger = migrateFlag === 'true' || migrateFlag === '1'
-    const isTokenMatch = token === expectedToken
-    
-    if (isTokenMatch || isSimpleTrigger) {
+    if (shouldMigrate) {
       // Run migration
       try {
         console.log('[MIGRATION] Starting database migration via recent-users endpoint...')
