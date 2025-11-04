@@ -541,93 +541,93 @@ export function PastExamsTable({
                             const canMoveDown = examIndex < sortedExams.length - 1;
                             
                             return (
-                            <tr key={exam.id} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-2">
-                                {onPastExamReorder && (
-                                  <div className="flex flex-col gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-4 w-4 p-0"
-                                      disabled={!canMoveUp}
-                                      onClick={() => handleReorder(exam.id, 'up')}
-                                      aria-label="上に移動"
-                                    >
-                                      <ChevronUp className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-4 w-4 p-0"
-                                      disabled={!canMoveDown}
-                                      onClick={() => handleReorder(exam.id, 'down')}
-                                      aria-label="下に移動"
-                                    >
-                                      <ChevronDown className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-4 py-2">{exam.year}</td>
-                              <td className="px-4 py-2">第{exam.examNumber}回</td>
-                              <td className="px-4 py-2 text-center whitespace-nowrap">
-                                {formatScore(exam.japaneseScore, exam.japanesePassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center whitespace-nowrap">
-                                {formatScore(exam.mathScore, exam.mathPassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center whitespace-nowrap">
-                                {formatScore(exam.scienceScore, exam.sciencePassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center whitespace-nowrap">
-                                {formatScore(exam.socialScore, exam.socialPassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center font-semibold whitespace-nowrap">
-                                {(() => {
-                                  const total = calculateTotalScore(exam);
-                                  const totalPassing = calculateTotalPassing(exam);
-                                  if (total === null) return <span className="text-sm">未</span>;
-                                  if (totalPassing !== null) {
+                              <tr key={exam.id} className="border-b hover:bg-gray-50">
+                                <td className="px-4 py-2">
+                                  {onPastExamReorder && (
+                                    <div className="flex flex-col gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-4 w-4 p-0"
+                                        disabled={!canMoveUp}
+                                        onClick={() => handleReorder(exam.id, 'up')}
+                                        aria-label="上に移動"
+                                      >
+                                        <ChevronUp className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-4 w-4 p-0"
+                                        disabled={!canMoveDown}
+                                        onClick={() => handleReorder(exam.id, 'down')}
+                                        aria-label="下に移動"
+                                      >
+                                        <ChevronDown className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">{exam.year}</td>
+                                <td className="px-4 py-2">第{exam.examNumber}回</td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.japaneseScore, exam.japanesePassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.mathScore, exam.mathPassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.scienceScore, exam.sciencePassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.socialScore, exam.socialPassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center font-semibold whitespace-nowrap">
+                                  {(() => {
+                                    const total = calculateTotalScore(exam);
+                                    const totalPassing = calculateTotalPassing(exam);
+                                    if (total === null) return <span className="text-sm">未</span>;
+                                    if (totalPassing !== null) {
+                                      return (
+                                        <span className="text-sm whitespace-nowrap">
+                                          {total} / {totalPassing}
+                                        </span>
+                                      );
+                                    }
+                                    return <span className="text-sm">{total.toString()}</span>;
+                                  })()}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {(() => {
+                                    const rate = calculateAchievementRate(exam);
+                                    if (rate === null) return <span className="text-sm">-</span>;
+                                    const isPassing = rate >= 100;
                                     return (
-                                      <span className="text-sm whitespace-nowrap">
-                                        {total} / {totalPassing}
+                                      <span className={`text-sm ${isPassing ? "text-green-600 font-semibold" : "text-orange-600"}`}>
+                                        {rate}%
                                       </span>
                                     );
-                                  }
-                                  return <span className="text-sm">{total.toString()}</span>;
-                                })()}
-                              </td>
-                              <td className="px-4 py-2 text-center whitespace-nowrap">
-                                {(() => {
-                                  const rate = calculateAchievementRate(exam);
-                                  if (rate === null) return <span className="text-sm">-</span>;
-                                  const isPassing = rate >= 100;
-                                  return (
-                                    <span className={`text-sm ${isPassing ? "text-green-600 font-semibold" : "text-orange-600"}`}>
-                                      {rate}%
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="px-4 py-2">
-                                <div className="flex gap-2 justify-center">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleOpenDialog(exam)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDelete(exam.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
+                                  })()}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <div className="flex gap-2 justify-center">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleOpenDialog(exam)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDelete(exam.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
                             );
                           })}
                       </tbody>
