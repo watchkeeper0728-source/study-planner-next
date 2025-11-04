@@ -162,8 +162,8 @@ export function PastExamsTable({
       const sameSchoolExams = pastExams
         .filter(e => e.schoolName === currentExam.schoolName)
         .sort((a, b) => {
-          const orderA = a.displayOrder || 0;
-          const orderB = b.displayOrder || 0;
+          const orderA = (a as any).displayOrder || 0;
+          const orderB = (b as any).displayOrder || 0;
           if (orderA !== orderB) return orderA - orderB;
           if (b.year !== a.year) return b.year - a.year;
           return b.examNumber - a.examNumber;
@@ -182,8 +182,8 @@ export function PastExamsTable({
       if (targetIndex < 0 || targetIndex >= sameSchoolExams.length) return;
       
       const targetExam = sameSchoolExams[targetIndex];
-      const currentOrder = currentExam.displayOrder || 0;
-      const targetOrder = targetExam.displayOrder || 0;
+      const currentOrder = (currentExam as any).displayOrder || 0;
+      const targetOrder = (targetExam as any).displayOrder || 0;
       
       // 順序を入れ替え
       await onPastExamReorder(id, targetOrder);
@@ -521,8 +521,8 @@ export function PastExamsTable({
                       <tbody>
                         {exams
                           .sort((a, b) => {
-                            const orderA = a.displayOrder || 0;
-                            const orderB = b.displayOrder || 0;
+                            const orderA = (a as any).displayOrder || 0;
+                            const orderB = (b as any).displayOrder || 0;
                             if (orderA !== orderB) return orderA - orderB;
                             // displayOrderが同じ場合は年と回数でソート
                             if (b.year !== a.year) return b.year - a.year;
@@ -530,8 +530,8 @@ export function PastExamsTable({
                           })
                           .map((exam, index, arr) => {
                             const sortedExams = [...arr].sort((a, b) => {
-                              const orderA = a.displayOrder || 0;
-                              const orderB = b.displayOrder || 0;
+                              const orderA = (a as any).displayOrder || 0;
+                              const orderB = (b as any).displayOrder || 0;
                               if (orderA !== orderB) return orderA - orderB;
                               if (b.year !== a.year) return b.year - a.year;
                               return b.examNumber - a.examNumber;
