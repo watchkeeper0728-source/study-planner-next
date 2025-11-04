@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Edit, Trash2, GripVertical } from "lucide-react";
 import { PastExam } from "@prisma/client";
 import { toast } from "sonner";
 
@@ -43,6 +43,8 @@ export function PastExamsTable({
     totalPassing: "",
   });
   const [isNewSchool, setIsNewSchool] = useState(false);
+  const [draggedExamId, setDraggedExamId] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // 学校ごとにグループ化
   const groupedBySchool = pastExams.reduce((acc, exam) => {
@@ -159,17 +161,50 @@ export function PastExamsTable({
     }
   };
 
-  const handleReorder = async (id: string, direction: 'up' | 'down') => {
-    if (!onPastExamReorder) return;
+  const handleDragStart = (e: React.DragEvent, examId: string) => {
+    setDraggedExamId(examId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', examId);
+    // ドラッグ中の行を半透明にする
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    // ドラッグ終了時に元に戻す
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedExamId(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetExamId: string, schoolName: string) => {
+    e.preventDefault();
+    setDragOverIndex(null);
     
+    if (!onPastExamReorder || !draggedExamId) return;
+    
+    if (draggedExamId === targetExamId) {
+      setDraggedExamId(null);
+      return;
+    }
+
     try {
-      // 現在の試験を見つける
-      const currentExam = pastExams.find(e => e.id === id);
-      if (!currentExam) return;
-      
       // 同じ学校の試験を取得
       const sameSchoolExams = pastExams
-        .filter(e => e.schoolName === currentExam.schoolName)
+        .filter(e => e.schoolName === schoolName)
         .sort((a, b) => {
           const orderA = (a as any).displayOrder || 0;
           const orderB = (b as any).displayOrder || 0;
@@ -178,30 +213,55 @@ export function PastExamsTable({
           return b.examNumber - a.examNumber;
         });
       
-      const currentIndex = sameSchoolExams.findIndex(e => e.id === id);
-      if (currentIndex === -1) return;
+      const draggedIndex = sameSchoolExams.findIndex(e => e.id === draggedExamId);
+      const targetIndex = sameSchoolExams.findIndex(e => e.id === targetExamId);
       
-      let targetIndex: number;
-      if (direction === 'up') {
-        targetIndex = currentIndex - 1;
+      if (draggedIndex === -1 || targetIndex === -1) return;
+      
+      // 新しい順序を計算
+      let newOrder: number;
+      
+      if (draggedIndex < targetIndex) {
+        // 下に移動する場合：ターゲットの次の要素の順序を取得
+        if (targetIndex < sameSchoolExams.length - 1) {
+          const nextOrder = (sameSchoolExams[targetIndex + 1] as any).displayOrder || 0;
+          const targetOrder = (sameSchoolExams[targetIndex] as any).displayOrder || 0;
+          newOrder = Math.floor((targetOrder + nextOrder) / 2);
+          // 同じ値になる場合は調整
+          if (newOrder === targetOrder || newOrder === nextOrder) {
+            newOrder = targetOrder + 500;
+          }
+        } else {
+          // 最後の要素の場合は、最後の要素の順序 + 1000
+          const lastOrder = (sameSchoolExams[sameSchoolExams.length - 1] as any).displayOrder || 0;
+          newOrder = lastOrder + 1000;
+        }
       } else {
-        targetIndex = currentIndex + 1;
+        // 上に移動する場合：ターゲットの前の要素の順序を取得
+        if (targetIndex > 0) {
+          const prevOrder = (sameSchoolExams[targetIndex - 1] as any).displayOrder || 0;
+          const targetOrder = (sameSchoolExams[targetIndex] as any).displayOrder || 0;
+          newOrder = Math.floor((prevOrder + targetOrder) / 2);
+          // 同じ値になる場合は調整
+          if (newOrder === prevOrder || newOrder === targetOrder) {
+            newOrder = prevOrder + 500;
+          }
+        } else {
+          // 最初の要素の場合は、最初の要素の順序 - 1000
+          const firstOrder = (sameSchoolExams[0] as any).displayOrder || 0;
+          newOrder = Math.max(0, firstOrder - 1000);
+        }
       }
       
-      if (targetIndex < 0 || targetIndex >= sameSchoolExams.length) return;
-      
-      const targetExam = sameSchoolExams[targetIndex];
-      const currentOrder = (currentExam as any).displayOrder || 0;
-      const targetOrder = (targetExam as any).displayOrder || 0;
-      
-      // 順序を入れ替え
-      await onPastExamReorder(id, targetOrder);
-      await onPastExamReorder(targetExam.id, currentOrder);
+      // ドラッグされた要素のdisplayOrderを更新
+      await onPastExamReorder(draggedExamId, newOrder);
       
       toast.success("順序を変更しました");
     } catch (error) {
       console.error("並べ替えエラー:", error);
       toast.error("順序の変更に失敗しました");
+    } finally {
+      setDraggedExamId(null);
     }
   };
 
@@ -545,35 +605,28 @@ export function PastExamsTable({
                               if (b.year !== a.year) return b.year - a.year;
                               return b.examNumber - a.examNumber;
                             });
-                            const examIndex = sortedExams.findIndex(e => e.id === exam.id);
-                            const canMoveUp = examIndex > 0;
-                            const canMoveDown = examIndex < sortedExams.length - 1;
+                            const isDragging = draggedExamId === exam.id;
+                            const isDragOver = dragOverIndex === index && draggedExamId !== exam.id;
                             
                             return (
-                              <tr key={exam.id} className="border-b hover:bg-gray-50">
+                              <tr
+                                key={exam.id}
+                                draggable={onPastExamReorder ? true : false}
+                                onDragStart={(e) => onPastExamReorder && handleDragStart(e, exam.id)}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={(e) => onPastExamReorder && handleDragOver(e, index)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => onPastExamReorder && handleDrop(e, exam.id, exam.schoolName)}
+                                className={`border-b hover:bg-gray-50 transition-colors ${
+                                  isDragging ? 'opacity-50' : ''
+                                } ${
+                                  isDragOver ? 'bg-blue-100 border-blue-300' : ''
+                                } ${onPastExamReorder ? 'cursor-move' : ''}`}
+                              >
                                 <td className="px-4 py-2">
                                   {onPastExamReorder && (
-                                    <div className="flex flex-col gap-1">
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-4 w-4 p-0"
-                                        disabled={!canMoveUp}
-                                        onClick={() => handleReorder(exam.id, 'up')}
-                                        aria-label="上に移動"
-                                      >
-                                        <ChevronUp className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-4 w-4 p-0"
-                                        disabled={!canMoveDown}
-                                        onClick={() => handleReorder(exam.id, 'down')}
-                                        aria-label="下に移動"
-                                      >
-                                        <ChevronDown className="h-3 w-3" />
-                                      </Button>
+                                    <div className="flex items-center justify-center">
+                                      <GripVertical className="h-4 w-4 text-gray-400" />
                                     </div>
                                   )}
                                 </td>
@@ -624,6 +677,8 @@ export function PastExamsTable({
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleOpenDialog(exam)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onDragStart={(e) => e.stopPropagation()}
                                     >
                                       <Edit className="h-4 w-4" />
                                     </Button>
@@ -631,6 +686,8 @@ export function PastExamsTable({
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleDelete(exam.id)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onDragStart={(e) => e.stopPropagation()}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
