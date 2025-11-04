@@ -150,12 +150,12 @@ export function PastExamsTable({
     if (passing !== null && passing !== undefined) {
       const isPassing = score >= passing;
       return (
-        <span className={isPassing ? "text-green-600 font-semibold" : "text-red-600"}>
+        <span className={`whitespace-nowrap text-sm ${isPassing ? "text-green-600 font-semibold" : "text-red-600"}`}>
           {scoreStr} / {passing}
         </span>
       );
     }
-    return scoreStr;
+    return <span className="text-sm">{scoreStr}</span>;
   };
 
   const calculateTotalScore = (exam: PastExam) => {
@@ -455,40 +455,40 @@ export function PastExamsTable({
                             <tr key={exam.id} className="border-b hover:bg-gray-50">
                               <td className="px-4 py-2">{exam.year}</td>
                               <td className="px-4 py-2">第{exam.examNumber}回</td>
-                              <td className="px-4 py-2 text-center">
+                              <td className="px-4 py-2 text-center whitespace-nowrap">
                                 {formatScore(exam.japaneseScore, exam.japanesePassing)}
                               </td>
-                              <td className="px-4 py-2 text-center">
+                              <td className="px-4 py-2 text-center whitespace-nowrap">
                                 {formatScore(exam.mathScore, exam.mathPassing)}
                               </td>
-                              <td className="px-4 py-2 text-center">
+                              <td className="px-4 py-2 text-center whitespace-nowrap">
                                 {formatScore(exam.scienceScore, exam.sciencePassing)}
                               </td>
-                              <td className="px-4 py-2 text-center">
+                              <td className="px-4 py-2 text-center whitespace-nowrap">
                                 {formatScore(exam.socialScore, exam.socialPassing)}
                               </td>
-                              <td className="px-4 py-2 text-center font-semibold">
+                              <td className="px-4 py-2 text-center font-semibold whitespace-nowrap">
                                 {(() => {
                                   const total = calculateTotalScore(exam);
                                   const totalPassing = calculateTotalPassing(exam);
-                                  if (total === null) return "未";
+                                  if (total === null) return <span className="text-sm">未</span>;
                                   if (totalPassing !== null) {
                                     return (
-                                      <span>
+                                      <span className="text-sm whitespace-nowrap">
                                         {total} / {totalPassing}
                                       </span>
                                     );
                                   }
-                                  return total.toString();
+                                  return <span className="text-sm">{total.toString()}</span>;
                                 })()}
                               </td>
-                              <td className="px-4 py-2 text-center">
+                              <td className="px-4 py-2 text-center whitespace-nowrap">
                                 {(() => {
                                   const rate = calculateAchievementRate(exam);
-                                  if (rate === null) return "-";
+                                  if (rate === null) return <span className="text-sm">-</span>;
                                   const isPassing = rate >= 100;
                                   return (
-                                    <span className={isPassing ? "text-green-600 font-semibold" : "text-orange-600"}>
+                                    <span className={`text-sm ${isPassing ? "text-green-600 font-semibold" : "text-orange-600"}`}>
                                       {rate}%
                                     </span>
                                   );
