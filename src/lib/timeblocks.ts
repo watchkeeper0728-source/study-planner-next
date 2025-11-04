@@ -111,6 +111,6 @@ export function calculateWeeklyAvailableMinutes(startDate: Date): number {
 }
 
 // 曜日ごとの学習可能時間を取得（分単位）
-export function getAvailableHours(): { [key: number]: { start: number; end: number } } {
+export function getAvailableHours(): { [key: number]: { start: number; end: number }[] } {
   return AVAILABLE_HOURS;
 }
