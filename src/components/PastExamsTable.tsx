@@ -628,7 +628,8 @@ export function PastExamsTable({
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
