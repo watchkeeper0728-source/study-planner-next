@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { PastExam } from "@prisma/client";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ export function PastExamsTable({
     socialScore: "",
     socialPassing: "",
   });
+  const [isNewSchool, setIsNewSchool] = useState(false);
 
   // 学校ごとにグループ化
   const groupedBySchool = pastExams.reduce((acc, exam) => {
@@ -47,6 +49,9 @@ export function PastExamsTable({
     acc[exam.schoolName].push(exam);
     return acc;
   }, {} as Record<string, PastExam[]>);
+
+  // 登録済みの学校名の一覧を取得（重複を除く）
+  const schoolNames = Array.from(new Set(pastExams.map(exam => exam.schoolName))).sort();
 
   const handleOpenDialog = (exam?: PastExam) => {
     if (exam) {
@@ -64,6 +69,7 @@ export function PastExamsTable({
         socialScore: exam.socialScore?.toString() || "",
         socialPassing: exam.socialPassing?.toString() || "",
       });
+      setIsNewSchool(false);
     } else {
       setEditingExam(null);
       setFormData({
@@ -79,6 +85,7 @@ export function PastExamsTable({
         socialScore: "",
         socialPassing: "",
       });
+      setIsNewSchool(false);
     }
     setIsDialogOpen(true);
   };
@@ -90,18 +97,24 @@ export function PastExamsTable({
 
   const handleSubmit = async () => {
     try {
+      const parseScore = (value: string): number | null => {
+        if (!value || value.trim() === '') return null;
+        const parsed = parseInt(value);
+        return isNaN(parsed) ? null : parsed;
+      };
+
       const data = {
         schoolName: formData.schoolName,
         year: formData.year,
         examNumber: formData.examNumber,
-        mathScore: formData.mathScore ? parseInt(formData.mathScore) : null,
-        mathPassing: formData.mathPassing ? parseInt(formData.mathPassing) : null,
-        japaneseScore: formData.japaneseScore ? parseInt(formData.japaneseScore) : null,
-        japanesePassing: formData.japanesePassing ? parseInt(formData.japanesePassing) : null,
-        scienceScore: formData.scienceScore ? parseInt(formData.scienceScore) : null,
-        sciencePassing: formData.sciencePassing ? parseInt(formData.sciencePassing) : null,
-        socialScore: formData.socialScore ? parseInt(formData.socialScore) : null,
-        socialPassing: formData.socialPassing ? parseInt(formData.socialPassing) : null,
+        mathScore: parseScore(formData.mathScore),
+        mathPassing: parseScore(formData.mathPassing),
+        japaneseScore: parseScore(formData.japaneseScore),
+        japanesePassing: parseScore(formData.japanesePassing),
+        scienceScore: parseScore(formData.scienceScore),
+        sciencePassing: parseScore(formData.sciencePassing),
+        socialScore: parseScore(formData.socialScore),
+        socialPassing: parseScore(formData.socialPassing),
       };
 
       if (editingExam) {
@@ -132,7 +145,7 @@ export function PastExamsTable({
   };
 
   const formatScore = (score: number | null | undefined, passing: number | null | undefined) => {
-    if (score === null || score === undefined) return "-";
+    if (score === null || score === undefined) return "未";
     const scoreStr = score.toString();
     if (passing !== null && passing !== undefined) {
       const isPassing = score >= passing;
@@ -146,6 +159,7 @@ export function PastExamsTable({
   };
 
   const calculateTotalScore = (exam: PastExam) => {
+    // 入力されている科目のスコアのみを合計
     const scores = [
       exam.japaneseScore,
       exam.mathScore,
@@ -159,12 +173,19 @@ export function PastExamsTable({
   };
 
   const calculateTotalPassing = (exam: PastExam) => {
-    const passings = [
-      exam.japanesePassing,
-      exam.mathPassing,
-      exam.sciencePassing,
-      exam.socialPassing,
-    ].filter((p): p is number => p !== null && p !== undefined);
+    // スコアが入力されている科目に対応する合格点のみを合計
+    const subjects = [
+      { score: exam.japaneseScore, passing: exam.japanesePassing },
+      { score: exam.mathScore, passing: exam.mathPassing },
+      { score: exam.scienceScore, passing: exam.sciencePassing },
+      { score: exam.socialScore, passing: exam.socialPassing },
+    ];
+    
+    // スコアが入力されている科目の合格点のみを抽出
+    const passings = subjects
+      .filter((s) => s.score !== null && s.score !== undefined)
+      .map((s) => s.passing)
+      .filter((p): p is number => p !== null && p !== undefined);
     
     return passings.length > 0
       ? passings.reduce((sum, passing) => sum + passing, 0)
@@ -201,12 +222,40 @@ export function PastExamsTable({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="schoolName">学校名 *</Label>
-                  <Input
-                    id="schoolName"
-                    value={formData.schoolName}
-                    onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
-                    placeholder="例: 開成中学校"
-                  />
+                  {isNewSchool || (schoolNames.length === 0) ? (
+                    <Input
+                      id="schoolName"
+                      value={formData.schoolName}
+                      onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
+                      placeholder="例: 開成中学校"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <Select
+                        value={formData.schoolName || undefined}
+                        onValueChange={(value) => {
+                          if (value === "__new__") {
+                            setIsNewSchool(true);
+                            setFormData({ ...formData, schoolName: "" });
+                          } else {
+                            setFormData({ ...formData, schoolName: value });
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="学校名を選択" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {schoolNames.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="__new__">+ 新しい学校名を入力</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="year">年 *</Label>
@@ -422,7 +471,7 @@ export function PastExamsTable({
                                 {(() => {
                                   const total = calculateTotalScore(exam);
                                   const totalPassing = calculateTotalPassing(exam);
-                                  if (total === null) return "-";
+                                  if (total === null) return "未";
                                   if (totalPassing !== null) {
                                     return (
                                       <span>

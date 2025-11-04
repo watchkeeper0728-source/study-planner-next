@@ -7,7 +7,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { EventInput } from "@fullcalendar/core";
 import { format, startOfWeek, addDays } from "date-fns";
 import { ja } from "date-fns/locale";
-import { generateWeekTimeBlocks } from "@/lib/timeblocks";
+import { generateWeekTimeBlocks, calculateWeeklyAvailableMinutes } from "@/lib/timeblocks";
 import { getSubjectConfig } from "@/lib/subject";
 import { Subject } from "@prisma/client";
 
@@ -94,6 +94,33 @@ export function MiniWeekCalendar({
     .filter((event): event is NonNullable<typeof event> => event !== null);
 
   const backgroundEvents = generateWeekTimeBlocks(startOfWeek(currentWeek, { weekStartsOn: 1 }));
+  
+  // 一週間の学習可能時間を計算
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
+  const weeklyAvailableMinutes = calculateWeeklyAvailableMinutes(weekStart);
+  
+  // 予定表に埋めた予定学習時間を計算（現在の週の予定のみ）
+  const weeklyPlannedMinutes = plans
+    .filter(plan => {
+      const planStart = typeof plan.start === 'string' ? new Date(plan.start) : plan.start;
+      const planWeekStart = startOfWeek(planStart, { weekStartsOn: 1 });
+      return planWeekStart.getTime() === weekStart.getTime();
+    })
+    .reduce((total, plan) => {
+      const startDate = typeof plan.start === 'string' ? new Date(plan.start) : plan.start;
+      const endDate = typeof plan.end === 'string' ? new Date(plan.end) : plan.end;
+      const minutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+      return total + minutes;
+    }, 0);
+  
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}時間${mins > 0 ? `${mins}分` : ''}`;
+    }
+    return `${mins}分`;
+  };
 
   const handleDateSelect = (selectInfo: any) => {
     const { start, end } = selectInfo;
@@ -318,9 +345,15 @@ export function MiniWeekCalendar({
   return (
     <div className="flex flex-col h-full calendar-container">
       <div className="flex items-center justify-between p-3 border-b">
-        <h2 className="text-base font-semibold" aria-label="週間カレンダー">
-          {format(currentWeek, "M月d日", { locale: ja })}週
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold" aria-label="週間カレンダー">
+            {format(currentWeek, "M月d日", { locale: ja })}週
+          </h2>
+          <div className="text-xs text-gray-600 space-x-3">
+            <span>学習可能時間: <strong className="text-blue-600">{formatTime(weeklyAvailableMinutes)}</strong></span>
+            <span>予定学習時間: <strong className="text-green-600">{formatTime(weeklyPlannedMinutes)}</strong></span>
+          </div>
+        </div>
         <div className="flex gap-1.5 items-center">
           {onPlanDeleteAll && plans.length > 0 && (
             <button
@@ -402,6 +435,24 @@ export function MiniWeekCalendar({
             minute: '2-digit',
             meridiem: false,
             hour12: false
+          }}
+          dayCellClassNames={(arg) => {
+            const today = new Date();
+            const cellDate = new Date(arg.date);
+            const isToday = 
+              cellDate.getFullYear() === today.getFullYear() &&
+              cellDate.getMonth() === today.getMonth() &&
+              cellDate.getDate() === today.getDate();
+            return isToday ? 'fc-day-today-custom' : '';
+          }}
+          dayHeaderClassNames={(arg) => {
+            const today = new Date();
+            const headerDate = new Date(arg.date);
+            const isToday = 
+              headerDate.getFullYear() === today.getFullYear() &&
+              headerDate.getMonth() === today.getMonth() &&
+              headerDate.getDate() === today.getDate();
+            return isToday ? 'fc-day-header-today-custom' : '';
           }}
         />
       </div>
