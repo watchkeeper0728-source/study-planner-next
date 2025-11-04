@@ -38,6 +38,7 @@ export function PastExamsTable({
     sciencePassing: "",
     socialScore: "",
     socialPassing: "",
+    totalPassing: "",
   });
   const [isNewSchool, setIsNewSchool] = useState(false);
 
@@ -68,6 +69,7 @@ export function PastExamsTable({
         sciencePassing: exam.sciencePassing?.toString() || "",
         socialScore: exam.socialScore?.toString() || "",
         socialPassing: exam.socialPassing?.toString() || "",
+        totalPassing: exam.totalPassing?.toString() || "",
       });
       setIsNewSchool(false);
     } else {
@@ -84,6 +86,7 @@ export function PastExamsTable({
         sciencePassing: "",
         socialScore: "",
         socialPassing: "",
+        totalPassing: "",
       });
       setIsNewSchool(false);
     }
@@ -115,6 +118,7 @@ export function PastExamsTable({
         sciencePassing: parseScore(formData.sciencePassing),
         socialScore: parseScore(formData.socialScore),
         socialPassing: parseScore(formData.socialPassing),
+        totalPassing: parseScore(formData.totalPassing),
       };
 
       if (editingExam) {
@@ -173,6 +177,11 @@ export function PastExamsTable({
   };
 
   const calculateTotalPassing = (exam: PastExam) => {
+    // totalPassingが設定されている場合はそれを使用
+    if (exam.totalPassing !== null && exam.totalPassing !== undefined) {
+      return exam.totalPassing;
+    }
+    
     // スコアが入力されている科目に対応する合格点のみを合計
     const subjects = [
       { score: exam.japaneseScore, passing: exam.japanesePassing },
@@ -398,6 +407,21 @@ export function PastExamsTable({
                       placeholder="例: 83"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">合計</h3>
+                <div>
+                  <Label htmlFor="totalPassing">全科目合計の合格最低点</Label>
+                  <Input
+                    id="totalPassing"
+                    type="number"
+                    value={formData.totalPassing}
+                    onChange={(e) => setFormData({ ...formData, totalPassing: e.target.value })}
+                    min="0"
+                    placeholder="例: 320"
+                  />
                 </div>
               </div>
 

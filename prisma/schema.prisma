@@ -141,6 +141,7 @@ model PastExam {
   sciencePassing Int?   // 理科の合格点
   socialScore  Int?     // 社会のスコア
   socialPassing Int?     // 社会の合格点
+  totalPassing Int?     // 全科目合計の合格最低点
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)

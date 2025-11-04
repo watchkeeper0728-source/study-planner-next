@@ -54,6 +54,7 @@ export const pastExamSchema = z.object({
   sciencePassing: z.number().min(0).max(100).nullable().optional(),
   socialScore: z.number().min(0).max(100).nullable().optional(),
   socialPassing: z.number().min(0).max(100).nullable().optional(),
+  totalPassing: z.number().min(0).nullable().optional(),
 });
 
 export type TodoInput = z.infer<typeof todoSchema>;
