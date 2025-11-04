@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { PastExam } from "@prisma/client";
 import { toast } from "sonner";
 
@@ -16,13 +16,15 @@ interface PastExamsTableProps {
   onPastExamCreate: (exam: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt">) => Promise<void>;
   onPastExamUpdate: (id: string, exam: Partial<PastExam>) => Promise<void>;
   onPastExamDelete: (id: string) => Promise<void>;
+  onPastExamReorder?: (id: string, newOrder: number) => Promise<void>;
 }
 
 export function PastExamsTable({ 
   pastExams, 
   onPastExamCreate, 
   onPastExamUpdate, 
-  onPastExamDelete 
+  onPastExamDelete,
+  onPastExamReorder
 }: PastExamsTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<PastExam | null>(null);
@@ -145,6 +147,52 @@ export function PastExamsTable({
     } catch (error) {
       console.error("過去問削除エラー:", error);
       toast.error("過去問の削除に失敗しました");
+    }
+  };
+
+  const handleReorder = async (id: string, direction: 'up' | 'down') => {
+    if (!onPastExamReorder) return;
+    
+    try {
+      // 現在の試験を見つける
+      const currentExam = pastExams.find(e => e.id === id);
+      if (!currentExam) return;
+      
+      // 同じ学校の試験を取得
+      const sameSchoolExams = pastExams
+        .filter(e => e.schoolName === currentExam.schoolName)
+        .sort((a, b) => {
+          const orderA = a.displayOrder || 0;
+          const orderB = b.displayOrder || 0;
+          if (orderA !== orderB) return orderA - orderB;
+          if (b.year !== a.year) return b.year - a.year;
+          return b.examNumber - a.examNumber;
+        });
+      
+      const currentIndex = sameSchoolExams.findIndex(e => e.id === id);
+      if (currentIndex === -1) return;
+      
+      let targetIndex: number;
+      if (direction === 'up') {
+        targetIndex = currentIndex - 1;
+      } else {
+        targetIndex = currentIndex + 1;
+      }
+      
+      if (targetIndex < 0 || targetIndex >= sameSchoolExams.length) return;
+      
+      const targetExam = sameSchoolExams[targetIndex];
+      const currentOrder = currentExam.displayOrder || 0;
+      const targetOrder = targetExam.displayOrder || 0;
+      
+      // 順序を入れ替え
+      await onPastExamReorder(id, targetOrder);
+      await onPastExamReorder(targetExam.id, currentOrder);
+      
+      toast.success("順序を変更しました");
+    } catch (error) {
+      console.error("並べ替えエラー:", error);
+      toast.error("順序の変更に失敗しました");
     }
   };
 
@@ -458,6 +506,7 @@ export function PastExamsTable({
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
+                          {onPastExamReorder && <th className="px-4 py-2 text-center w-12">順序</th>}
                           <th className="px-4 py-2 text-left">年</th>
                           <th className="px-4 py-2 text-left">回数</th>
                           <th className="px-4 py-2 text-center">国語</th>
@@ -472,11 +521,53 @@ export function PastExamsTable({
                       <tbody>
                         {exams
                           .sort((a, b) => {
+                            const orderA = a.displayOrder || 0;
+                            const orderB = b.displayOrder || 0;
+                            if (orderA !== orderB) return orderA - orderB;
+                            // displayOrderが同じ場合は年と回数でソート
                             if (b.year !== a.year) return b.year - a.year;
                             return b.examNumber - a.examNumber;
                           })
-                          .map((exam) => (
+                          .map((exam, index, arr) => {
+                            const sortedExams = [...arr].sort((a, b) => {
+                              const orderA = a.displayOrder || 0;
+                              const orderB = b.displayOrder || 0;
+                              if (orderA !== orderB) return orderA - orderB;
+                              if (b.year !== a.year) return b.year - a.year;
+                              return b.examNumber - a.examNumber;
+                            });
+                            const examIndex = sortedExams.findIndex(e => e.id === exam.id);
+                            const canMoveUp = examIndex > 0;
+                            const canMoveDown = examIndex < sortedExams.length - 1;
+                            
+                            return (
                             <tr key={exam.id} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-2">
+                                {onPastExamReorder && (
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-4 w-4 p-0"
+                                      disabled={!canMoveUp}
+                                      onClick={() => handleReorder(exam.id, 'up')}
+                                      aria-label="上に移動"
+                                    >
+                                      <ChevronUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-4 w-4 p-0"
+                                      disabled={!canMoveDown}
+                                      onClick={() => handleReorder(exam.id, 'down')}
+                                      aria-label="下に移動"
+                                    >
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
                               <td className="px-4 py-2">{exam.year}</td>
                               <td className="px-4 py-2">第{exam.examNumber}回</td>
                               <td className="px-4 py-2 text-center whitespace-nowrap">

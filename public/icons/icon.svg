@@ -4,23 +4,23 @@
   <!-- Light gray circle outline -->
   <circle cx="256" cy="256" r="240" fill="none" stroke="#D3D3D3" stroke-width="8"/>
   
-  <!-- Dark blue open book -->
+  <!-- Dark blue open book (2倍サイズ) -->
   <g transform="translate(256, 256)">
     <!-- Left page -->
-    <path d="M -80 -40 L -80 60 L -40 80 L -40 -20 Z" fill="#1F497D"/>
+    <path d="M -160 -80 L -160 120 L -80 160 L -80 -40 Z" fill="#1F497D"/>
     <!-- Right page -->
-    <path d="M 40 -20 L 40 80 L 80 60 L 80 -40 Z" fill="#1F497D"/>
+    <path d="M 80 -40 L 80 160 L 160 120 L 160 -80 Z" fill="#1F497D"/>
     <!-- Book spine -->
-    <path d="M -40 -20 L -40 80 L 40 80 L 40 -20 Z" fill="#1F497D"/>
+    <path d="M -80 -40 L -80 160 L 80 160 L 80 -40 Z" fill="#1F497D"/>
     <!-- Page separation lines -->
-    <line x1="-40" y1="-20" x2="40" y2="-20" stroke="white" stroke-width="2"/>
-    <line x1="-40" y1="80" x2="40" y2="80" stroke="white" stroke-width="2"/>
+    <line x1="-80" y1="-40" x2="80" y2="-40" stroke="white" stroke-width="4"/>
+    <line x1="-80" y1="160" x2="80" y2="160" stroke="white" stroke-width="4"/>
     <!-- Left page outline -->
-    <path d="M -80 -40 L -80 60 L -40 80" fill="none" stroke="white" stroke-width="2"/>
+    <path d="M -160 -80 L -160 120 L -80 160" fill="none" stroke="white" stroke-width="4"/>
     <!-- Right page outline -->
-    <path d="M 40 80 L 80 60 L 80 -40" fill="none" stroke="white" stroke-width="2"/>
+    <path d="M 80 160 L 160 120 L 160 -80" fill="none" stroke="white" stroke-width="4"/>
   </g>
   
-  <!-- Lime green checkmark above and slightly to the right of the book -->
-  <path d="M 200 140 L 240 180 L 320 100" fill="none" stroke="#70AD47" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Lime green checkmark above and slightly to the right of the book (2倍サイズ) -->
+  <path d="M 140 60 L 200 140 L 360 20" fill="none" stroke="#70AD47" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

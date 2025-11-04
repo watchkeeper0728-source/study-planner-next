@@ -99,6 +99,28 @@ export default function PastExamsPage() {
     }
   };
 
+  const handlePastExamReorder = async (id: string, newOrder: number) => {
+    try {
+      const response = await fetch(`/api/past-exams/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayOrder: newOrder }),
+      });
+
+      if (response.ok) {
+        // 並べ替え後に全データを再取得
+        await fetchData();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "順序の変更に失敗しました");
+      }
+    } catch (error) {
+      console.error("過去問並べ替えエラー:", error);
+      toast.error(error instanceof Error ? error.message : "順序の変更に失敗しました");
+      throw error;
+    }
+  };
+
   if (status === "loading" || isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -131,6 +153,7 @@ export default function PastExamsPage() {
           onPastExamCreate={handlePastExamCreate}
           onPastExamUpdate={handlePastExamUpdate}
           onPastExamDelete={handlePastExamDelete}
+          onPastExamReorder={handlePastExamReorder}
         />
       </div>
     </div>

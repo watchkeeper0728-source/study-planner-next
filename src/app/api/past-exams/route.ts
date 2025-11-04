@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       where: { userId: session.id },
       orderBy: [
         { schoolName: "asc" },
+        { displayOrder: "asc" },
         { year: "desc" },
         { examNumber: "desc" },
       ],
