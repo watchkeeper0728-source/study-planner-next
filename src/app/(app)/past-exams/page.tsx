@@ -36,7 +36,7 @@ export default function PastExamsPage() {
     }
   };
 
-  const handlePastExamCreate = async (examData: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt">) => {
+  const handlePastExamCreate = async (examData: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt" | "displayOrder"> & { displayOrder?: number }) => {
     try {
       const response = await fetch("/api/past-exams", {
         method: "POST",

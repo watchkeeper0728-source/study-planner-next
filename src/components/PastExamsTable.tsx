@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 interface PastExamsTableProps {
   pastExams: PastExam[];
-  onPastExamCreate: (exam: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt">) => Promise<void>;
+  onPastExamCreate: (exam: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt" | "displayOrder"> & { displayOrder?: number }) => Promise<void>;
   onPastExamUpdate: (id: string, exam: Partial<PastExam>) => Promise<void>;
   onPastExamDelete: (id: string) => Promise<void>;
   onPastExamReorder?: (id: string, newOrder: number) => Promise<void>;
@@ -121,6 +121,15 @@ export function PastExamsTable({
         socialScore: parseScore(formData.socialScore),
         socialPassing: parseScore(formData.socialPassing),
         totalPassing: parseScore(formData.totalPassing),
+        displayOrder: editingExam ? undefined : (() => {
+          // 同じ学校の試験の中で最大のdisplayOrderを取得
+          const sameSchoolExams = pastExams.filter(e => e.schoolName === formData.schoolName);
+          const maxOrder = sameSchoolExams.reduce((max, exam) => {
+            const order = (exam as any).displayOrder || 0;
+            return Math.max(max, order);
+          }, 0);
+          return maxOrder + 1000; // 1000刻みで設定して、後で並べ替えられるようにする
+        })(),
       };
 
       if (editingExam) {
