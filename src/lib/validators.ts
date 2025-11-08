@@ -36,10 +36,10 @@ export const testSchema = z.object({
 export const reflectionSchema = z.object({
   testId: z.string(),
   subject: z.nativeEnum(Subject),
-  score: z.number().min(0).max(100).optional(),
-  deviation: z.number().min(0).max(100).optional(),
-  approach: z.string().optional(),
-  learning: z.string().optional(),
+  score: z.number().min(0).max(100).nullable().optional(),
+  deviation: z.number().min(0).max(100).nullable().optional(),
+  approach: z.string().nullable().optional(),
+  learning: z.string().nullable().optional(),
 });
 
 export const pastExamSchema = z.object({
