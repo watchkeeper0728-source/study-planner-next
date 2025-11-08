@@ -122,7 +122,7 @@ export function ReflectionsList({ reflections }: ReflectionsListProps) {
                             <div className="text-xs font-medium text-gray-600 mb-1">
                               観点①: テストの受け方
                             </div>
-                            <div className="text-sm bg-gray-50 p-2 rounded">
+                            <div className="text-sm bg-gray-50 p-2 rounded whitespace-pre-wrap">
                               {reflection.approach}
                             </div>
                           </div>
@@ -133,7 +133,7 @@ export function ReflectionsList({ reflections }: ReflectionsListProps) {
                             <div className="text-xs font-medium text-gray-600 mb-1">
                               観点②: 学習内容
                             </div>
-                            <div className="text-sm bg-gray-50 p-2 rounded">
+                            <div className="text-sm bg-gray-50 p-2 rounded whitespace-pre-wrap">
                               {reflection.learning}
                             </div>
                           </div>
