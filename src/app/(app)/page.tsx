@@ -284,9 +284,8 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        const newTest = await response.json();
-        setTests(prev => [...prev, newTest]);
         toast.success("テストを追加しました");
+        await fetchData(); // データを再取得
       } else {
         const error = await response.json();
         throw new Error(error.error || "テストの追加に失敗しました");
@@ -307,11 +306,8 @@ export default function HomePage() {
       console.log("レスポンスstatus:", response.status);
 
       if (response.ok) {
-        const result = await response.json();
-        console.log("削除成功:", result);
-        setTests(prev => prev.filter(test => test.id !== id));
-        setReflections(prev => prev.filter(reflection => reflection.testId !== id));
         toast.success("テストを削除しました");
+        await fetchData(); // データを再取得
       } else {
         const errorData = await response.json();
         console.error("削除失敗:", errorData);
@@ -323,8 +319,10 @@ export default function HomePage() {
     }
   };
 
-  const handleTestComplete = (testId: string) => {
+  const handleTestComplete = async (testId: string) => {
     // テストページに遷移（TestCountdownBarで既に遷移しているが、念のため）
+    // データを再取得して完了したテストを表示から除外
+    await fetchData();
     router.push("/tests");
   };
 

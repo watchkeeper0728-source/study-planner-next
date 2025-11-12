@@ -32,6 +32,12 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
   // 反省が存在するテストを完了済みとして判定
   const completedTestIds = new Set(reflections.map(r => r.testId));
 
+  // 完了していないテストのみをフィルタリングし、日付順にソート（近い順）
+  const activeTests = tests
+    .filter(test => !completedTestIds.has(test.id))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3); // 最大3件まで
+
   const handleComplete = (testId: string) => {
     if (completedTestIds.has(testId)) {
       toast.info("このテストは既に完了しています");
@@ -90,7 +96,7 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
             <DialogTrigger asChild>
               <Button 
                 size="sm" 
-                disabled={tests.length >= 3}
+                disabled={activeTests.length >= 3}
                 aria-label="新しいテストを追加"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -128,13 +134,13 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
           </Dialog>
         </div>
 
-        {tests.length === 0 ? (
+        {activeTests.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             テストが登録されていません
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            {tests.map((test) => {
+            {activeTests.map((test) => {
               const days = getDaysUntilTest(new Date(test.date));
               const countdownText = getCountdownText(days);
               const countdownColor = getCountdownColor(days);
@@ -142,11 +148,11 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
               return (
                 <Card 
                   key={test.id} 
-                  className={`hover:shadow-md transition-shadow ${completedTestIds.has(test.id) ? "bg-gray-100" : ""}`}
+                  className="hover:shadow-md transition-shadow"
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
-                      <CardTitle className={`text-sm font-medium ${completedTestIds.has(test.id) ? "line-through text-gray-500" : ""}`}>
+                      <CardTitle className="text-sm font-medium">
                         {test.name}
                       </CardTitle>
                       <div className="flex gap-1">
@@ -155,7 +161,6 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
                           variant="default"
                           onClick={() => handleComplete(test.id)}
                           className="bg-green-500 hover:bg-green-600"
-                          disabled={completedTestIds.has(test.id)}
                         >
                           完了
                         </Button>
@@ -177,7 +182,7 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
                         {format(new Date(test.date), "M月d日(E)", { locale: ja })}
                       </div>
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${countdownColor}`}>
-                        {completedTestIds.has(test.id) ? "完了" : countdownText}
+                        {countdownText}
                       </div>
                     </div>
                   </CardContent>
@@ -187,7 +192,7 @@ export function TestCountdownBar({ tests, reflections = [], onTestCreate, onTest
           </div>
         )}
 
-        {tests.length >= 3 && (
+        {activeTests.length >= 3 && (
           <div className="text-center text-sm text-gray-500 mt-4">
             テストは最大3件まで登録できます
           </div>
