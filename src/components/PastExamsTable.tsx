@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Printer } from "lucide-react";
 import { PastExam } from "@prisma/client";
 import { toast } from "sonner";
 
@@ -182,13 +182,22 @@ export function PastExamsTable({
     return Math.round((totalScore / totalPassing) * 100);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">過去問スコア記録</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint} className="print:hidden">
+            <Printer className="h-4 w-4 mr-2" />
+            印刷
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
+            <Button onClick={() => handleOpenDialog()} className="print:hidden">
               <Plus className="h-4 w-4 mr-2" />
               過去問を追加
             </Button>
@@ -363,6 +372,7 @@ export function PastExamsTable({
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {Object.keys(groupedBySchool).length === 0 ? (
@@ -381,7 +391,7 @@ export function PastExamsTable({
                   <CardTitle>{schoolName}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto past-exams-print">
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
@@ -393,7 +403,7 @@ export function PastExamsTable({
                           <th className="px-4 py-2 text-center">社会</th>
                           <th className="px-4 py-2 text-center">合計点</th>
                           <th className="px-4 py-2 text-center">達成率</th>
-                          <th className="px-4 py-2 text-center">操作</th>
+                          <th className="px-4 py-2 text-center print:hidden">操作</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -445,7 +455,7 @@ export function PastExamsTable({
                                   );
                                 })()}
                               </td>
-                              <td className="px-4 py-2">
+                              <td className="px-4 py-2 print:hidden">
                                 <div className="flex gap-2 justify-center">
                                   <Button
                                     size="sm"

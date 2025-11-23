@@ -151,6 +151,32 @@
     white-space: normal !important;
     word-wrap: break-word !important;
   }
+
+  /* 過去問テーブルの印刷スタイル */
+  .past-exams-print {
+    page-break-inside: avoid;
+  }
+
+  .past-exams-print table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .past-exams-print th,
+  .past-exams-print td {
+    border: 1px solid #000;
+    padding: 8px;
+    text-align: left;
+  }
+
+  .past-exams-print th {
+    background-color: #f3f4f6 !important;
+    font-weight: bold;
+  }
+
+  .past-exams-print tr {
+    page-break-inside: avoid;
+  }
 }
 
 
