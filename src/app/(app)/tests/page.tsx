@@ -132,12 +132,42 @@ export default function TestsPage() {
           const reflectionWithTest = { ...newReflection, test };
           setReflections(prev => [...prev, reflectionWithTest]);
         }
+        await fetchData(); // データを再取得
       } else {
         throw new Error("反省の記録に失敗しました");
       }
     } catch (error) {
       console.error("反省記録エラー:", error);
       toast.error("反省の記録に失敗しました");
+      throw error;
+    }
+  };
+
+  const handleReflectionUpdate = async (id: string, updates: Partial<Reflection>) => {
+    try {
+      const response = await fetch(`/api/reflections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        const updatedReflection = await response.json();
+        // テスト情報を追加
+        const test = tests.find(t => t.id === updatedReflection.testId);
+        if (test) {
+          const reflectionWithTest = { ...updatedReflection, test };
+          setReflections(prev => prev.map(r => r.id === id ? reflectionWithTest : r));
+        }
+        toast.success("反省を更新しました");
+        await fetchData(); // データを再取得
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "反省の更新に失敗しました");
+      }
+    } catch (error) {
+      console.error("反省更新エラー:", error);
+      toast.error(error instanceof Error ? error.message : "反省の更新に失敗しました");
       throw error;
     }
   };
@@ -180,7 +210,10 @@ export default function TestsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <ReflectionsList reflections={reflections} />
+        <ReflectionsList 
+          reflections={reflections} 
+          onReflectionUpdate={handleReflectionUpdate}
+        />
       </div>
     </div>
   );

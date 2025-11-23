@@ -6,22 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Printer } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Edit, Trash2, GripVertical, Printer } from "lucide-react";
 import { PastExam } from "@prisma/client";
 import { toast } from "sonner";
 
 interface PastExamsTableProps {
   pastExams: PastExam[];
-  onPastExamCreate: (exam: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt">) => Promise<void>;
+  onPastExamCreate: (exam: Omit<PastExam, "id" | "userId" | "createdAt" | "updatedAt" | "displayOrder"> & { displayOrder?: number }) => Promise<void>;
   onPastExamUpdate: (id: string, exam: Partial<PastExam>) => Promise<void>;
   onPastExamDelete: (id: string) => Promise<void>;
+  onPastExamReorder?: (id: string, newOrder: number) => Promise<void>;
 }
 
 export function PastExamsTable({ 
   pastExams, 
   onPastExamCreate, 
   onPastExamUpdate, 
-  onPastExamDelete 
+  onPastExamDelete,
+  onPastExamReorder
 }: PastExamsTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<PastExam | null>(null);
@@ -37,7 +40,11 @@ export function PastExamsTable({
     sciencePassing: "",
     socialScore: "",
     socialPassing: "",
+    totalPassing: "",
   });
+  const [isNewSchool, setIsNewSchool] = useState(false);
+  const [draggedExamId, setDraggedExamId] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // 学校ごとにグループ化
   const groupedBySchool = pastExams.reduce((acc, exam) => {
@@ -47,6 +54,9 @@ export function PastExamsTable({
     acc[exam.schoolName].push(exam);
     return acc;
   }, {} as Record<string, PastExam[]>);
+
+  // 登録済みの学校名の一覧を取得（重複を除く）
+  const schoolNames = Array.from(new Set(pastExams.map(exam => exam.schoolName))).sort();
 
   const handleOpenDialog = (exam?: PastExam) => {
     if (exam) {
@@ -63,7 +73,9 @@ export function PastExamsTable({
         sciencePassing: exam.sciencePassing?.toString() || "",
         socialScore: exam.socialScore?.toString() || "",
         socialPassing: exam.socialPassing?.toString() || "",
+        totalPassing: exam.totalPassing?.toString() || "",
       });
+      setIsNewSchool(false);
     } else {
       setEditingExam(null);
       setFormData({
@@ -78,7 +90,9 @@ export function PastExamsTable({
         sciencePassing: "",
         socialScore: "",
         socialPassing: "",
+        totalPassing: "",
       });
+      setIsNewSchool(false);
     }
     setIsDialogOpen(true);
   };
@@ -90,18 +104,34 @@ export function PastExamsTable({
 
   const handleSubmit = async () => {
     try {
+      const parseScore = (value: string): number | null => {
+        if (!value || value.trim() === '') return null;
+        const parsed = parseInt(value);
+        return isNaN(parsed) ? null : parsed;
+      };
+
       const data = {
         schoolName: formData.schoolName,
         year: formData.year,
         examNumber: formData.examNumber,
-        mathScore: formData.mathScore ? parseInt(formData.mathScore) : null,
-        mathPassing: formData.mathPassing ? parseInt(formData.mathPassing) : null,
-        japaneseScore: formData.japaneseScore ? parseInt(formData.japaneseScore) : null,
-        japanesePassing: formData.japanesePassing ? parseInt(formData.japanesePassing) : null,
-        scienceScore: formData.scienceScore ? parseInt(formData.scienceScore) : null,
-        sciencePassing: formData.sciencePassing ? parseInt(formData.sciencePassing) : null,
-        socialScore: formData.socialScore ? parseInt(formData.socialScore) : null,
-        socialPassing: formData.socialPassing ? parseInt(formData.socialPassing) : null,
+        mathScore: parseScore(formData.mathScore),
+        mathPassing: parseScore(formData.mathPassing),
+        japaneseScore: parseScore(formData.japaneseScore),
+        japanesePassing: parseScore(formData.japanesePassing),
+        scienceScore: parseScore(formData.scienceScore),
+        sciencePassing: parseScore(formData.sciencePassing),
+        socialScore: parseScore(formData.socialScore),
+        socialPassing: parseScore(formData.socialPassing),
+        totalPassing: parseScore(formData.totalPassing),
+        displayOrder: editingExam ? undefined : (() => {
+          // 同じ学校の試験の中で最大のdisplayOrderを取得
+          const sameSchoolExams = pastExams.filter(e => e.schoolName === formData.schoolName);
+          const maxOrder = sameSchoolExams.reduce((max, exam) => {
+            const order = (exam as any).displayOrder || 0;
+            return Math.max(max, order);
+          }, 0);
+          return maxOrder + 1000; // 1000刻みで設定して、後で並べ替えられるようにする
+        })(),
       };
 
       if (editingExam) {
@@ -131,21 +161,126 @@ export function PastExamsTable({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, examId: string) => {
+    setDraggedExamId(examId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', examId);
+    // ドラッグ中の行を半透明にする
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    // ドラッグ終了時に元に戻す
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedExamId(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetExamId: string, schoolName: string) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    if (!onPastExamReorder || !draggedExamId) return;
+    
+    if (draggedExamId === targetExamId) {
+      setDraggedExamId(null);
+      return;
+    }
+
+    try {
+      // 同じ学校の試験を取得
+      const sameSchoolExams = pastExams
+        .filter(e => e.schoolName === schoolName)
+        .sort((a, b) => {
+          const orderA = (a as any).displayOrder || 0;
+          const orderB = (b as any).displayOrder || 0;
+          if (orderA !== orderB) return orderA - orderB;
+          if (b.year !== a.year) return b.year - a.year;
+          return b.examNumber - a.examNumber;
+        });
+      
+      const draggedIndex = sameSchoolExams.findIndex(e => e.id === draggedExamId);
+      const targetIndex = sameSchoolExams.findIndex(e => e.id === targetExamId);
+      
+      if (draggedIndex === -1 || targetIndex === -1) return;
+      
+      // 新しい順序を計算
+      let newOrder: number;
+      
+      if (draggedIndex < targetIndex) {
+        // 下に移動する場合：ターゲットの次の要素の順序を取得
+        if (targetIndex < sameSchoolExams.length - 1) {
+          const nextOrder = (sameSchoolExams[targetIndex + 1] as any).displayOrder || 0;
+          const targetOrder = (sameSchoolExams[targetIndex] as any).displayOrder || 0;
+          newOrder = Math.floor((targetOrder + nextOrder) / 2);
+          // 同じ値になる場合は調整
+          if (newOrder === targetOrder || newOrder === nextOrder) {
+            newOrder = targetOrder + 500;
+          }
+        } else {
+          // 最後の要素の場合は、最後の要素の順序 + 1000
+          const lastOrder = (sameSchoolExams[sameSchoolExams.length - 1] as any).displayOrder || 0;
+          newOrder = lastOrder + 1000;
+        }
+      } else {
+        // 上に移動する場合：ターゲットの前の要素の順序を取得
+        if (targetIndex > 0) {
+          const prevOrder = (sameSchoolExams[targetIndex - 1] as any).displayOrder || 0;
+          const targetOrder = (sameSchoolExams[targetIndex] as any).displayOrder || 0;
+          newOrder = Math.floor((prevOrder + targetOrder) / 2);
+          // 同じ値になる場合は調整
+          if (newOrder === prevOrder || newOrder === targetOrder) {
+            newOrder = prevOrder + 500;
+          }
+        } else {
+          // 最初の要素の場合は、最初の要素の順序 - 1000
+          const firstOrder = (sameSchoolExams[0] as any).displayOrder || 0;
+          newOrder = Math.max(0, firstOrder - 1000);
+        }
+      }
+      
+      // ドラッグされた要素のdisplayOrderを更新
+      await onPastExamReorder(draggedExamId, newOrder);
+      
+      toast.success("順序を変更しました");
+    } catch (error) {
+      console.error("並べ替えエラー:", error);
+      toast.error("順序の変更に失敗しました");
+    } finally {
+      setDraggedExamId(null);
+    }
+  };
+
   const formatScore = (score: number | null | undefined, passing: number | null | undefined) => {
-    if (score === null || score === undefined) return "-";
+    if (score === null || score === undefined) return "未";
     const scoreStr = score.toString();
     if (passing !== null && passing !== undefined) {
       const isPassing = score >= passing;
       return (
-        <span className={isPassing ? "text-green-600 font-semibold" : "text-red-600"}>
+        <span className={`whitespace-nowrap text-sm ${isPassing ? "text-green-600 font-semibold" : "text-red-600"}`}>
           {scoreStr} / {passing}
         </span>
       );
     }
-    return scoreStr;
+    return <span className="text-sm">{scoreStr}</span>;
   };
 
   const calculateTotalScore = (exam: PastExam) => {
+    // 入力されている科目のスコアのみを合計
     const scores = [
       exam.japaneseScore,
       exam.mathScore,
@@ -159,12 +294,24 @@ export function PastExamsTable({
   };
 
   const calculateTotalPassing = (exam: PastExam) => {
-    const passings = [
-      exam.japanesePassing,
-      exam.mathPassing,
-      exam.sciencePassing,
-      exam.socialPassing,
-    ].filter((p): p is number => p !== null && p !== undefined);
+    // totalPassingが設定されている場合はそれを使用
+    if (exam.totalPassing !== null && exam.totalPassing !== undefined) {
+      return exam.totalPassing;
+    }
+    
+    // スコアが入力されている科目に対応する合格点のみを合計
+    const subjects = [
+      { score: exam.japaneseScore, passing: exam.japanesePassing },
+      { score: exam.mathScore, passing: exam.mathPassing },
+      { score: exam.scienceScore, passing: exam.sciencePassing },
+      { score: exam.socialScore, passing: exam.socialPassing },
+    ];
+    
+    // スコアが入力されている科目の合格点のみを抽出
+    const passings = subjects
+      .filter((s) => s.score !== null && s.score !== undefined)
+      .map((s) => s.passing)
+      .filter((p): p is number => p !== null && p !== undefined);
     
     return passings.length > 0
       ? passings.reduce((sum, passing) => sum + passing, 0)
@@ -210,12 +357,40 @@ export function PastExamsTable({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="schoolName">学校名 *</Label>
-                  <Input
-                    id="schoolName"
-                    value={formData.schoolName}
-                    onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
-                    placeholder="例: 開成中学校"
-                  />
+                  {isNewSchool || (schoolNames.length === 0) ? (
+                    <Input
+                      id="schoolName"
+                      value={formData.schoolName}
+                      onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
+                      placeholder="例: 開成中学校"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <Select
+                        value={formData.schoolName || undefined}
+                        onValueChange={(value) => {
+                          if (value === "__new__") {
+                            setIsNewSchool(true);
+                            setFormData({ ...formData, schoolName: "" });
+                          } else {
+                            setFormData({ ...formData, schoolName: value });
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="学校名を選択" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {schoolNames.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="__new__">+ 新しい学校名を入力</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="year">年 *</Label>
@@ -361,6 +536,21 @@ export function PastExamsTable({
                 </div>
               </div>
 
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">合計</h3>
+                <div>
+                  <Label htmlFor="totalPassing">全科目合計の合格最低点</Label>
+                  <Input
+                    id="totalPassing"
+                    type="number"
+                    value={formData.totalPassing}
+                    onChange={(e) => setFormData({ ...formData, totalPassing: e.target.value })}
+                    min="0"
+                    placeholder="例: 320"
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={handleCloseDialog}>
                   キャンセル
@@ -395,6 +585,7 @@ export function PastExamsTable({
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
+                          {onPastExamReorder && <th className="px-4 py-2 text-center w-12">順序</th>}
                           <th className="px-4 py-2 text-left">年</th>
                           <th className="px-4 py-2 text-left">回数</th>
                           <th className="px-4 py-2 text-center">国語</th>
@@ -409,72 +600,112 @@ export function PastExamsTable({
                       <tbody>
                         {exams
                           .sort((a, b) => {
+                            const orderA = (a as any).displayOrder || 0;
+                            const orderB = (b as any).displayOrder || 0;
+                            if (orderA !== orderB) return orderA - orderB;
+                            // displayOrderが同じ場合は年と回数でソート
                             if (b.year !== a.year) return b.year - a.year;
                             return b.examNumber - a.examNumber;
                           })
-                          .map((exam) => (
-                            <tr key={exam.id} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-2">{exam.year}</td>
-                              <td className="px-4 py-2">第{exam.examNumber}回</td>
-                              <td className="px-4 py-2 text-center">
-                                {formatScore(exam.japaneseScore, exam.japanesePassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                {formatScore(exam.mathScore, exam.mathPassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                {formatScore(exam.scienceScore, exam.sciencePassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                {formatScore(exam.socialScore, exam.socialPassing)}
-                              </td>
-                              <td className="px-4 py-2 text-center font-semibold">
-                                {(() => {
-                                  const total = calculateTotalScore(exam);
-                                  const totalPassing = calculateTotalPassing(exam);
-                                  if (total === null) return "-";
-                                  if (totalPassing !== null) {
+                          .map((exam, index, arr) => {
+                            const sortedExams = [...arr].sort((a, b) => {
+                              const orderA = (a as any).displayOrder || 0;
+                              const orderB = (b as any).displayOrder || 0;
+                              if (orderA !== orderB) return orderA - orderB;
+                              if (b.year !== a.year) return b.year - a.year;
+                              return b.examNumber - a.examNumber;
+                            });
+                            const isDragging = draggedExamId === exam.id;
+                            const isDragOver = dragOverIndex === index && draggedExamId !== exam.id;
+                            
+                            return (
+                              <tr
+                                key={exam.id}
+                                draggable={onPastExamReorder ? true : false}
+                                onDragStart={(e) => onPastExamReorder && handleDragStart(e, exam.id)}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={(e) => onPastExamReorder && handleDragOver(e, index)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => onPastExamReorder && handleDrop(e, exam.id, exam.schoolName)}
+                                className={`border-b hover:bg-gray-50 transition-colors ${
+                                  isDragging ? 'opacity-50' : ''
+                                } ${
+                                  isDragOver ? 'bg-blue-100 border-blue-300' : ''
+                                } ${onPastExamReorder ? 'cursor-move' : ''}`}
+                              >
+                                <td className="px-4 py-2">
+                                  {onPastExamReorder && (
+                                    <div className="flex items-center justify-center">
+                                      <GripVertical className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">{exam.year}</td>
+                                <td className="px-4 py-2">第{exam.examNumber}回</td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.japaneseScore, exam.japanesePassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.mathScore, exam.mathPassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.scienceScore, exam.sciencePassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {formatScore(exam.socialScore, exam.socialPassing)}
+                                </td>
+                                <td className="px-4 py-2 text-center font-semibold whitespace-nowrap">
+                                  {(() => {
+                                    const total = calculateTotalScore(exam);
+                                    const totalPassing = calculateTotalPassing(exam);
+                                    if (total === null) return <span className="text-sm">未</span>;
+                                    if (totalPassing !== null) {
+                                      return (
+                                        <span className="text-sm whitespace-nowrap">
+                                          {total} / {totalPassing}
+                                        </span>
+                                      );
+                                    }
+                                    return <span className="text-sm">{total.toString()}</span>;
+                                  })()}
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                  {(() => {
+                                    const rate = calculateAchievementRate(exam);
+                                    if (rate === null) return <span className="text-sm">-</span>;
+                                    const isPassing = rate >= 100;
                                     return (
-                                      <span>
-                                        {total} / {totalPassing}
+                                      <span className={`text-sm ${isPassing ? "text-green-600 font-semibold" : "text-orange-600"}`}>
+                                        {rate}%
                                       </span>
                                     );
-                                  }
-                                  return total.toString();
-                                })()}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                {(() => {
-                                  const rate = calculateAchievementRate(exam);
-                                  if (rate === null) return "-";
-                                  const isPassing = rate >= 100;
-                                  return (
-                                    <span className={isPassing ? "text-green-600 font-semibold" : "text-orange-600"}>
-                                      {rate}%
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="px-4 py-2 print:hidden">
-                                <div className="flex gap-2 justify-center">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleOpenDialog(exam)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDelete(exam.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                  })()}
+                                </td>
+                                <td className="px-4 py-2 print:hidden">
+                                  <div className="flex gap-2 justify-center">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleOpenDialog(exam)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onDragStart={(e) => e.stopPropagation()}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDelete(exam.id)}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onDragStart={(e) => e.stopPropagation()}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>

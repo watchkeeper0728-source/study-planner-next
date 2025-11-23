@@ -315,13 +315,16 @@ export function MiniWeekCalendar({
     window.print();
   };
 
+  const subjects: Subject[] = ["MATH", "JAPANESE", "SCIENCE", "SOCIAL"];
+
   return (
     <div className="flex flex-col h-full calendar-container">
-      <div className="flex items-center justify-between p-3 border-b">
-        <h2 className="text-base font-semibold" aria-label="週間カレンダー">
-          {format(currentWeek, "M月d日", { locale: ja })}週
-        </h2>
-        <div className="flex gap-1.5 items-center">
+      <div className="flex flex-col gap-2 p-3 border-b">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold" aria-label="週間カレンダー">
+            {format(currentWeek, "M月d日", { locale: ja })}週
+          </h2>
+          <div className="flex gap-1.5 items-center">
           {onPlanDeleteAll && plans.length > 0 && (
             <button
               onClick={onPlanDeleteAll}
@@ -361,6 +364,29 @@ export function MiniWeekCalendar({
           >
             📄 印刷
           </button>
+          </div>
+        </div>
+        {/* 科目と色の凡例 */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-gray-600 font-medium">科目:</span>
+          {subjects.map((subject) => {
+            const config = getSubjectConfig(subject);
+            return (
+              <div
+                key={subject}
+                className="flex items-center gap-1.5"
+              >
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{
+                    backgroundColor: getColor(config.color, "500"),
+                    border: `1px solid ${getColor(config.color, "600")}`,
+                  }}
+                />
+                <span className="text-xs text-gray-700">{config.label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
       

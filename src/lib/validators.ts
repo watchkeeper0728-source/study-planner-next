@@ -36,24 +36,26 @@ export const testSchema = z.object({
 export const reflectionSchema = z.object({
   testId: z.string(),
   subject: z.nativeEnum(Subject),
-  score: z.number().min(0).max(100).optional(),
-  deviation: z.number().min(0).max(100).optional(),
-  approach: z.string().optional(),
-  learning: z.string().optional(),
+  score: z.number().min(0).max(100).nullable().optional(),
+  deviation: z.number().min(0).max(100).nullable().optional(),
+  approach: z.string().nullable().optional(),
+  learning: z.string().nullable().optional(),
 });
 
 export const pastExamSchema = z.object({
   schoolName: z.string().min(1, "学校名は必須です").max(100, "学校名は100文字以内で入力してください"),
   year: z.number().min(2000).max(2100),
   examNumber: z.number().min(1).max(10),
-  mathScore: z.number().min(0).max(100).optional(),
-  mathPassing: z.number().min(0).max(100).optional(),
-  japaneseScore: z.number().min(0).max(100).optional(),
-  japanesePassing: z.number().min(0).max(100).optional(),
-  scienceScore: z.number().min(0).max(100).optional(),
-  sciencePassing: z.number().min(0).max(100).optional(),
-  socialScore: z.number().min(0).max(100).optional(),
-  socialPassing: z.number().min(0).max(100).optional(),
+  mathScore: z.number().min(0).max(100).nullable().optional(),
+  mathPassing: z.number().min(0).max(100).nullable().optional(),
+  japaneseScore: z.number().min(0).max(100).nullable().optional(),
+  japanesePassing: z.number().min(0).max(100).nullable().optional(),
+  scienceScore: z.number().min(0).max(100).nullable().optional(),
+  sciencePassing: z.number().min(0).max(100).nullable().optional(),
+  socialScore: z.number().min(0).max(100).nullable().optional(),
+  socialPassing: z.number().min(0).max(100).nullable().optional(),
+  totalPassing: z.number().min(0).nullable().optional(),
+  displayOrder: z.number().optional(),
 });
 
 export type TodoInput = z.infer<typeof todoSchema>;

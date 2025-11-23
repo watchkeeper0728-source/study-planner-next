@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       where: { userId: session.id },
       orderBy: [
         { schoolName: "asc" },
+        { displayOrder: "asc" },
         { year: "desc" },
         { examNumber: "desc" },
       ],
@@ -41,9 +42,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = pastExamSchema.parse(body);
 
+    // displayOrderが指定されていない場合は、同じ学校内の最大値+1000を設定
+    let displayOrder = validatedData.displayOrder;
+    if (displayOrder === undefined) {
+      const sameSchoolExams = await prisma.pastExam.findMany({
+        where: {
+          userId: session.id,
+          schoolName: validatedData.schoolName,
+        },
+        select: { displayOrder: true },
+        orderBy: { displayOrder: 'desc' },
+        take: 1,
+      });
+      const maxOrder = sameSchoolExams.length > 0 ? (sameSchoolExams[0].displayOrder || 0) : 0;
+      displayOrder = maxOrder + 1000;
+    }
+
     const pastExam = await prisma.pastExam.create({
       data: {
         ...validatedData,
+        displayOrder,
         userId: session.id,
       },
     });

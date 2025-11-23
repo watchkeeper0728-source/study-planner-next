@@ -38,3 +38,10 @@ next-env.d.ts
 # prisma
 prisma/migrations/*.sql
 !prisma/migrations/.gitkeep
+
+# other projects
+/folder-rules-sync
+/othello-app
+/splitfair
+.env.production
+.env.development

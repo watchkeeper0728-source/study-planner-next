@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Subject, Todo } from "@prisma/client";
 import { getSubjectConfig } from "@/lib/subject";
 
@@ -212,13 +212,29 @@ export function StudyTodoTabs({
                         aria-label={`${todo.title} - ${config.label}`}
                       >
                         <CardHeader className="pb-2 py-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-xs font-medium">
+                          <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-xs font-medium flex-1">
                               {todo.title}
                             </CardTitle>
-                            <Badge variant="outline" className={`${config.borderColor} text-xs px-2 py-0`}>
-                              {config.label}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={`${config.borderColor} text-xs px-2 py-0`}>
+                                {config.label}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`${todo.title}を削除しますか？`)) {
+                                    onTodoDelete(todo.id);
+                                  }
+                                }}
+                                aria-label={`${todo.title}を削除`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         </CardHeader>
                       </Card>

@@ -255,13 +255,13 @@ export function TestResultFormNew({ tests, reflections, onReflectionCreate }: Te
                             {reflection.approach && (
                               <div className="mt-2">
                                 <div className="text-xs font-medium text-gray-600">テストの受け方:</div>
-                                <div className="text-sm">{reflection.approach}</div>
+                                <div className="text-sm whitespace-pre-wrap">{reflection.approach}</div>
                               </div>
                             )}
                             {reflection.learning && (
                               <div className="mt-2">
                                 <div className="text-xs font-medium text-gray-600">学習内容:</div>
-                                <div className="text-sm">{reflection.learning}</div>
+                                <div className="text-sm whitespace-pre-wrap">{reflection.learning}</div>
                               </div>
                             )}
                           </div>

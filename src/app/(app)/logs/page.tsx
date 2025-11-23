@@ -9,6 +9,10 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Edit } from "lucide-react";
 
 interface StudyLog {
   id: string;
@@ -41,6 +45,8 @@ export default function LogsPage() {
   const router = useRouter();
   const [logs, setLogs] = useState<StudyLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingLog, setEditingLog] = useState<StudyLog | null>(null);
+  const [editMinutes, setEditMinutes] = useState<string>("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -97,6 +103,46 @@ export default function LogsPage() {
     } catch (error) {
       console.error("学習記録削除エラー:", error);
       toast.error("学習記録の削除に失敗しました");
+    }
+  };
+
+  const handleEdit = (log: StudyLog) => {
+    setEditingLog(log);
+    setEditMinutes(log.minutes.toString());
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditingLog(null);
+    setEditMinutes("");
+  };
+
+  const handleUpdate = async () => {
+    if (!editingLog) return;
+
+    const minutes = parseInt(editMinutes);
+    if (isNaN(minutes) || minutes < 1 || minutes > 480) {
+      toast.error("学習時間は1分以上480分（8時間）以内で入力してください");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/log/${editingLog.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minutes }),
+      });
+
+      if (response.ok) {
+        toast.success("学習記録を更新しました");
+        handleCloseEditDialog();
+        fetchLogs();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "学習記録の更新に失敗しました");
+      }
+    } catch (error) {
+      console.error("学習記録更新エラー:", error);
+      toast.error(error instanceof Error ? error.message : "学習記録の更新に失敗しました");
     }
   };
 
@@ -206,6 +252,15 @@ export default function LogsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleEdit(log)}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              編集
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleDelete(log.id)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
@@ -221,6 +276,60 @@ export default function LogsPage() {
             })}
           </div>
         )}
+
+        {/* 編集ダイアログ */}
+        <Dialog open={editingLog !== null} onOpenChange={handleCloseEditDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>学習時間を編集</DialogTitle>
+            </DialogHeader>
+            {editingLog && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="title">タイトル</Label>
+                  <Input
+                    id="title"
+                    value={editingLog.title}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="subject">科目</Label>
+                  <Input
+                    id="subject"
+                    value={subjectLabels[editingLog.subject]}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="minutes">学習時間（分） *</Label>
+                  <Input
+                    id="minutes"
+                    type="number"
+                    value={editMinutes}
+                    onChange={(e) => setEditMinutes(e.target.value)}
+                    min="1"
+                    max="480"
+                    placeholder="例: 60"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    現在: {Math.floor(editingLog.minutes / 60)}時間{editingLog.minutes % 60}分
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleCloseEditDialog}>
+                    キャンセル
+                  </Button>
+                  <Button onClick={handleUpdate}>
+                    更新
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

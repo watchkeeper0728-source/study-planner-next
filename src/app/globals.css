@@ -179,4 +179,40 @@
   }
 }
 
+/* 今日の日付をハイライト */
+.fc-day-today-custom {
+  background-color: rgba(254, 243, 199, 0.3) !important; /* 薄い黄色の背景 */
+}
+
+.fc-day-header-today-custom {
+  background-color: rgba(254, 243, 199, 0.5) !important; /* 少し濃い黄色の背景 */
+  font-weight: bold !important;
+}
+
+/* FullCalendarの背景イベントの表示順序を調整 */
+.fc-bg-event {
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 学習可能時間帯のセルを明示的にホワイトに */
+.fc-timegrid-slot {
+  background-color: white !important;
+}
+
+/* グレーの背景イベントを明示的に設定 */
+.fc-bg-event.fc-bg-gray {
+  background-color: rgba(107, 114, 128, 0.4) !important;
+  border-color: rgba(107, 114, 128, 0.5) !important;
+}
+
+/* 学習可能時間帯（ホワイト）を確実に表示 */
+.fc-timegrid-col {
+  background-color: white !important;
+}
+
+.fc-timegrid-col-events {
+  background-color: transparent !important;
+}
+
 
