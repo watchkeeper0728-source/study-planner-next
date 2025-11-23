@@ -17,6 +17,7 @@ interface PastExamsTableProps {
   onPastExamUpdate: (id: string, exam: Partial<PastExam>) => Promise<void>;
   onPastExamDelete: (id: string) => Promise<void>;
   onPastExamReorder?: (id: string, newOrder: number) => Promise<void>;
+  username?: string;
 }
 
 export function PastExamsTable({ 
@@ -24,7 +25,8 @@ export function PastExamsTable({
   onPastExamCreate, 
   onPastExamUpdate, 
   onPastExamDelete,
-  onPastExamReorder
+  onPastExamReorder,
+  username
 }: PastExamsTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<PastExam | null>(null);
@@ -335,6 +337,12 @@ export function PastExamsTable({
 
   return (
     <div className="space-y-6">
+      {/* 印刷時に表示されるユーザー名 */}
+      {username && (
+        <div className="hidden print:block text-sm text-gray-600 mb-1 print:mb-0.5">
+          ユーザー名: {username}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">過去問スコア記録</h2>
         <div className="flex gap-2">

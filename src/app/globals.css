@@ -229,6 +229,14 @@
     padding: 0 !important;
   }
 
+  /* 印刷時のユーザー名表示 */
+  .past-exams-print-container .print\\:block {
+    display: block !important;
+    font-size: 0.7em !important;
+    margin-bottom: 0.2rem !important;
+    padding: 0 !important;
+  }
+
   /* カードの余白を削減 */
   .past-exams-print-container .space-y-8 > * {
     margin-bottom: 0.5rem !important;

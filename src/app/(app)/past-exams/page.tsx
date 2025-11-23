@@ -154,6 +154,7 @@ export default function PastExamsPage() {
           onPastExamUpdate={handlePastExamUpdate}
           onPastExamDelete={handlePastExamDelete}
           onPastExamReorder={handlePastExamReorder}
+          username={session?.username}
         />
       </div>
     </div>
