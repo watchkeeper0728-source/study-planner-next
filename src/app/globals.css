@@ -82,7 +82,7 @@
   /* A4縦向きのサイズ */
   @page {
     size: A4 portrait;
-    margin: 0.5cm;
+    margin: 0.3cm;
   }
 
   /* ボディの背景色を白に */
@@ -99,17 +99,33 @@
 
   /* ページ全体のpaddingを減らす */
   .max-w-7xl {
-    padding: 0.5rem !important;
+    padding: 0.2rem !important;
+    margin: 0 !important;
   }
 
   .px-4 {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
+    padding-left: 0.3rem !important;
+    padding-right: 0.3rem !important;
   }
 
   .py-8 {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
+    padding-top: 0.3rem !important;
+    padding-bottom: 0.3rem !important;
+  }
+
+  /* 過去問ページのコンテナーの余白を削減 */
+  .past-exams-print-container .max-w-7xl {
+    padding: 0.1rem !important;
+  }
+
+  .past-exams-print-container .px-4 {
+    padding-left: 0.2rem !important;
+    padding-right: 0.2rem !important;
+  }
+
+  .past-exams-print-container .py-8 {
+    padding-top: 0.2rem !important;
+    padding-bottom: 0.2rem !important;
   }
 
   /* FullCalendarの印刷スタイル */
@@ -170,32 +186,101 @@
   /* 過去問テーブルの印刷スタイル */
   .past-exams-print {
     page-break-inside: avoid;
-    font-size: 0.85em !important;
+    font-size: 0.75em !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .past-exams-print table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9em !important;
+    font-size: 0.8em !important;
+    margin: 0 !important;
   }
 
   .past-exams-print th,
   .past-exams-print td {
     border: 1px solid #000;
-    padding: 4px 6px !important;
+    padding: 2px 4px !important;
     text-align: left;
-    font-size: 0.85em !important;
-    line-height: 1.2 !important;
+    font-size: 0.75em !important;
+    line-height: 1.1 !important;
   }
 
   .past-exams-print th {
     background-color: #f3f4f6 !important;
     font-weight: bold;
-    padding: 4px 6px !important;
+    padding: 3px 4px !important;
   }
 
   .past-exams-print tr {
     page-break-inside: avoid;
+  }
+
+  /* 過去問ページ全体の印刷スタイル */
+  .past-exams-print-container {
+    margin: 0 !important;
+    padding: 0.3rem !important;
+  }
+
+  .past-exams-print-container h2 {
+    font-size: 1.2em !important;
+    margin: 0.3rem 0 !important;
+    padding: 0 !important;
+  }
+
+  /* カードの余白を削減 */
+  .past-exams-print-container .space-y-8 > * {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .past-exams-print-container .space-y-6 {
+    gap: 0.3rem !important;
+  }
+
+  /* Cardコンポーネントの余白を削減 */
+  .past-exams-print-container [class*="Card"] {
+    margin: 0 !important;
+    padding: 0.3rem !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .past-exams-print-container [class*="CardHeader"] {
+    padding: 0.3rem 0.5rem !important;
+    margin: 0 !important;
+  }
+
+  .past-exams-print-container [class*="CardTitle"] {
+    font-size: 0.9em !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .past-exams-print-container [class*="CardContent"] {
+    padding: 0.3rem !important;
+    margin: 0 !important;
+  }
+
+  /* 順序列を完全に非表示（条件付きレンダリングに対応） */
+  .past-exams-print th.print\\:hidden,
+  .past-exams-print td.print\\:hidden {
+    display: none !important;
+  }
+
+  /* 順序列のth/tdを非表示（より確実に） */
+  .past-exams-print table thead tr th:has(+ th),
+  .past-exams-print table tbody tr td:has(+ td) {
+    /* 最初の列（順序列）を非表示にするためのフォールバック */
+  }
+
+  /* より確実な方法：順序列の幅を0にして非表示 */
+  .past-exams-print table th:first-child,
+  .past-exams-print table td:first-child {
+    width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    display: none !important;
   }
 
   /* 過去問ページ全体の印刷スタイル */

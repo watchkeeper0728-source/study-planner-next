@@ -146,7 +146,7 @@ export default function PastExamsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 past-exams-print-container">
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <PastExamsTable
           pastExams={pastExams}
