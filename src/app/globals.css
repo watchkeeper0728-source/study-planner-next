@@ -82,7 +82,7 @@
   /* A4縦向きのサイズ */
   @page {
     size: A4 portrait;
-    margin: 0.8cm;
+    margin: 0.5cm;
   }
 
   /* ボディの背景色を白に */
@@ -95,6 +95,21 @@
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+
+  /* ページ全体のpaddingを減らす */
+  .max-w-7xl {
+    padding: 0.5rem !important;
+  }
+
+  .px-4 {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .py-8 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
   }
 
   /* FullCalendarの印刷スタイル */
@@ -155,27 +170,74 @@
   /* 過去問テーブルの印刷スタイル */
   .past-exams-print {
     page-break-inside: avoid;
+    font-size: 0.85em !important;
   }
 
   .past-exams-print table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 0.9em !important;
   }
 
   .past-exams-print th,
   .past-exams-print td {
     border: 1px solid #000;
-    padding: 8px;
+    padding: 4px 6px !important;
     text-align: left;
+    font-size: 0.85em !important;
+    line-height: 1.2 !important;
   }
 
   .past-exams-print th {
     background-color: #f3f4f6 !important;
     font-weight: bold;
+    padding: 4px 6px !important;
   }
 
   .past-exams-print tr {
     page-break-inside: avoid;
+  }
+
+  /* 過去問ページ全体の印刷スタイル */
+  .past-exams-print .space-y-6,
+  .past-exams-print .space-y-8 {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .past-exams-print .space-y-6 > * + *,
+  .past-exams-print .space-y-8 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  /* Cardのpaddingを減らす */
+  .past-exams-print .bg-white {
+    padding: 0.5rem !important;
+  }
+
+  .past-exams-print .p-6 {
+    padding: 0.5rem !important;
+  }
+
+  /* タイトルの余白を減らす */
+  .past-exams-print h2 {
+    margin-bottom: 0.5rem !important;
+    font-size: 1.25em !important;
+  }
+
+  /* CardHeaderのpaddingを減らす */
+  .past-exams-print [class*="CardHeader"] {
+    padding: 0.5rem !important;
+  }
+
+  .past-exams-print [class*="CardContent"] {
+    padding: 0.5rem !important;
+  }
+
+  /* テーブルの行の高さを減らす */
+  .past-exams-print tbody tr {
+    height: auto !important;
+    min-height: 0 !important;
   }
 }
 

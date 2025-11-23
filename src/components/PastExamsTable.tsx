@@ -585,7 +585,7 @@ export function PastExamsTable({
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          {onPastExamReorder && <th className="px-4 py-2 text-center w-12">順序</th>}
+                          {onPastExamReorder && <th className="px-4 py-2 text-center w-12 print:hidden">順序</th>}
                           <th className="px-4 py-2 text-left">年</th>
                           <th className="px-4 py-2 text-left">回数</th>
                           <th className="px-4 py-2 text-center">国語</th>
@@ -633,7 +633,7 @@ export function PastExamsTable({
                                   isDragOver ? 'bg-blue-100 border-blue-300' : ''
                                 } ${onPastExamReorder ? 'cursor-move' : ''}`}
                               >
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2 print:hidden">
                                   {onPastExamReorder && (
                                     <div className="flex items-center justify-center">
                                       <GripVertical className="h-4 w-4 text-gray-400" />
